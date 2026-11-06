@@ -1,0 +1,14 @@
+# Caddy gets and renews the HTTPS certificate for APP_DOMAIN by itself.
+# The domain must already point (DNS A record) at this server, and ports 80 and 443 must be open.
+{$APP_DOMAIN} {
+	encode gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+	# Allow proposal PDFs and picture uploads (the app limits them itself)
+	request_body {
+		max_size 12MB
+	}
+	reverse_proxy api:4400
+}

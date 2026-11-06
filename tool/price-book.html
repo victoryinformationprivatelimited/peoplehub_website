@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Price book</title>
+<style>
+  .bar { display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end; margin-bottom:18px; }
+  .bar .f { min-width:210px; flex:1 1 210px; max-width:340px; }
+  .legend { display:flex; gap:16px; flex-wrap:wrap; align-items:center; margin:0 0 14px; }
+  table.pb th.n, table.pb td.n { text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  table.pb td small { display:block; color:var(--muted); font-size:11.5px; }
+  table.pb td.n.chg { background:var(--warn-bg); font-weight:700; }
+  table.pb td.nm { min-width:220px; }
+  .kv { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; }
+  .kv div { background:var(--s2); border-radius:12px; padding:12px 14px; } .kv small { display:block; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.07em; font-weight:700; } .kv b { font-size:17px; }
+  .badge { display:inline-block; font-size:11px; font-weight:700; padding:2px 9px; border-radius:99px; background:var(--soft); color:var(--accent-d); margin-left:8px; vertical-align:middle; }
+  .core td { background:var(--soft) !important; font-weight:700; }
+  small.mg { display:block; color:var(--muted); font-size:11px; font-weight:500; line-height:1.35; margin-top:2px; }
+  small.mg b { color:var(--good); font-weight:700; }
+  .kv small.mg { text-transform:none; letter-spacing:0; font-size:11.5px; }
+</style>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem("ph-theme")||"dark"}catch(e){}</script>
+<link rel="stylesheet" href="ui.css">
+</head>
+<body>
+<div id="gate"><div class="box">
+  <h2>Price book</h2><div class="hint">Sign in with your PeopleHub pricing login.</div>
+  <input type="text" id="gUser" placeholder="Username" autocomplete="username">
+  <input type="password" id="gPass" placeholder="Password" autocomplete="current-password">
+  <div class="err" id="gErr"></div><button class="primary" id="gGo">Log in</button>
+</div></div>
+
+<div class="wrap">
+  <div class="top"><h1>Price book</h1><div class="sp"></div><a id="toChecker" href="price-checker.html" style="display:inline"><button class="primary">Open price checker</button></a></div>
+  <div class="sub" id="subLine">Every price in one place, read-only. Monthly prices in USD.</div>
+
+  <div class="card" id="controls">
+    <div class="bar">
+      <div class="f" id="verBox"><label>Price list version</label><select id="verSel"></select></div>
+      <div class="f" id="viewBox"><label>Prices shown for</label><select id="viewSel"></select></div>
+      <div class="f" id="cmpBox"><label>Highlight changes since</label><select id="cmpSel"></select></div>
+    </div>
+    <div class="hint" id="viewHint"></div>
+  </div>
+
+  <div id="book"></div>
+</div>
+
+<script src="shell.js"></script>
+<script src="app.js"></script>
+<script>
+(function(){
+  var $ = PH.$, esc = PH.esc, money = PH.money;
+  var versions = [], cur = null, cmp = null, me = null, partnerView = null;
+
+  function priceOf(d, m, bi){
+    var o = (d.overrides || {})[m.id + '|' + bi];
+    if (o !== undefined && o !== null) return o;
+    var f = d.factors[bi];
+    if (m.base == null || f == null) return null;
+    return Math.round(m.base * f * 100) / 100;
+  }
+  // listV is the original (list) price when the view is a discounted one; the margin is what the partner keeps
+  function marginLine(v, listV){
+    if (listV == null || v == null) return '';
+    var m = listV - v;
+    if (m < 0.005) return '<small class="mg">List ' + money(listV) + '<br>no discount</small>';
+    return '<small class="mg">List ' + money(listV) + '<br>Margin <b>' + money(m) + '</b> · ' + (m / listV * 100).toFixed(0) + '%</small>';
+  }
+  function cell(v, was, listV){ if (v == null) return '<td class="n">custom</td>'; var ch = was !== undefined && was !== null && Math.abs(was - v) > 0.004; return '<td class="n' + (ch ? ' chg' : '') + '"' + (ch ? ' title="Was ' + money(was) + '"' : '') + '>' + money(v) + marginLine(v, listV) + '</td>'; }
+  function rowMoney(label, arr, oldArr, sub, listArr){
+    return '<tr><td class="nm">' + esc(label) + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</td>' + arr.map(function(v, i){ return cell(v, oldArr ? oldArr[i] : undefined, listArr ? listArr[i] : undefined); }).join('') + '</tr>';
+  }
+  // a stat box that also shows the list price and margin when there is one
+  function stat(label, v, listV, tail){
+    var extra = '';
+    if (listV != null && listV - v >= 0.00005) extra = '<small class="mg">List ' + money(listV) + ' · margin <b>' + money(listV - v) + '</b> (' + ((listV - v) / listV * 100).toFixed(0) + '%)</small>';
+    return '<div><small>' + esc(label) + '</small><b>' + money(v) + '</b> ' + tail + extra + '</div>';
+  }
+
+  function render(d, o, L){
+    var head ='<tr><th>Item</th>' + d.bands.map(function(b){ return '<th class="n">' + esc(b.label) + '</th>'; }).join('') + '</tr>';
+    var bi = d.bands.map(function(_, i){ return i; });
+    var html = '';
+    function itemRows(group){
+      return d.items.filter(function(m){ return m.group === group; }).map(function(m){
+        var old = o ? o.items.filter(function(x){ return x.id === m.id; })[0] : null;
+        var lm = L ? L.items.filter(function(x){ return x.id === m.id; })[0] : null;
+        return rowMoney(m.name, bi.map(function(i){ return priceOf(d, m, i); }), old ? bi.map(function(i){ return priceOf(o, old, i); }) : null, m.includes, lm ? bi.map(function(i){ return priceOf(L, lm, i); }) : null);
+      }).join('');
+    }
+    var core = d.items.filter(function(m){ return m.group === 'core'; })[0];
+    if (core) {
+      var oc = o ? o.items.filter(function(x){ return x.id === core.id; })[0] : null;
+      html += '<div class="card"><h2>Core HR<span class="badge">minimum fee · never discounted</span></h2>' +
+        '<div class="hint" style="margin-bottom:10px">' + esc((d.core || []).join(' · ')) + '</div>' +
+        '<div class="table-wrap"><table class="pb"><thead>' + head + '</thead><tbody>' + rowMoney('Core HR (per month)', bi.map(function(i){ return priceOf(d, core, i); }), oc ? bi.map(function(i){ return priceOf(o, oc, i); }) : null) + '</tbody></table></div></div>';
+      if (L) html = html.replace('minimum fee · never discounted', 'minimum fee · no partner margin');
+    }
+    (d.groups || []).filter(function(g){ return g.id !== 'core'; }).forEach(function(g){
+      var rows = itemRows(g.id); if (!rows) return;
+      html += '<div class="card"><h2>' + esc(g.name) + '</h2><div class="table-wrap"><table class="pb"><thead>' + head + '</thead><tbody>' + rows + '</tbody></table></div></div>';
+    });
+    // seats and portal
+    html += '<div class="card"><h2>Users</h2><div class="table-wrap"><table class="pb"><thead>' + head + '</thead><tbody>' +
+      '<tr><td class="nm">Administrator seats included<small>Main application</small></td>' + d.seats.map(function(s){ return '<td class="n">' + s + '</td>'; }).join('') + '</tr>' +
+      rowMoney('Employee portal, per user per month', d.portal, o ? o.portal : null, 'Web, Android and iOS under one licence', L ? L.portal : null) +
+      '</tbody></table></div>' +
+      '<div class="kv" style="margin-top:14px">' + stat('Extra administrator seat', d.extraSeat, L ? L.extraSeat : null, '/ month') + '</div></div>';
+    // usage and services
+    var st = d.storage || {}, nt = d.notify || {};
+    var NL = { sms: 'SMS', whatsapp: 'WhatsApp', email: 'Email' };
+    html += '<div class="card"><h2>Storage, notifications and services</h2><div class="kv">' +
+      '<div><small>Free storage</small><b>' + (st.freeMBPerEmployee || 0) + ' MB</b> per employee</div>' +
+      stat('Extra storage', st.blockPrice, L && L.storage ? L.storage.blockPrice : null, 'per ' + (st.blockGB || 5) + ' GB block / month') +
+      Object.keys(nt).map(function(k){
+        var v = Number(nt[k]), lv = L && L.notify ? Number(L.notify[k]) : null;
+        var fmt = function(x){ return '$' + x.toFixed(4).replace(/0+$/, '').replace(/\.$/, ''); };
+        return '<div><small>' + esc(NL[k] || k) + ' message</small><b>' + fmt(v) + '</b> each' + (lv != null && lv - v > 0.0000005 ? '<small class="mg">List ' + fmt(lv) + ' · margin <b>' + fmt(lv - v) + '</b> (' + ((lv - v) / lv * 100).toFixed(0) + '%)</small>' : '') + '</div>';
+      }).join('') +
+      stat('Integration', d.integrationHourly, L ? L.integrationHourly : null, 'per hour') +
+      stat('Custom development', d.developmentHourly, L ? L.developmentHourly : null, 'per hour') +
+      (d.perpetual ? '<div><small>Perpetual licence</small><b>' + d.perpetual.multiplier + '×</b> monthly platform price</div><div><small>Annual maintenance</small><b>' + d.perpetual.maintenancePct + '%</b> of licence fee</div>' : '') +
+      '</div></div>';
+    var im = d.implementation;
+    if (im && (im.base.some(function(v){ return v; }) || Object.keys(im.perModule || {}).length)) {
+      var lim = L && L.implementation ? L.implementation : null, oim = o && o.implementation ? o.implementation : null;
+      html += '<div class="card"><h2>Implementation fee</h2><div class="hint" style="margin-bottom:10px">A one-time fee for set-up, configuration, data migration, training and go-live: the base fee for the size of the company, plus the amount for each module or add-on.</div>' +
+        '<div class="table-wrap"><table class="pb"><thead>' + head + '</thead><tbody>' + rowMoney('Base fee', im.base, oim ? oim.base : null, null, lim ? lim.base : null) + '</tbody></table></div>' +
+        '<div class="kv" style="margin-top:14px">' + d.items.filter(function(m){ return m.group !== 'core' && (im.perModule || {})[m.id]; }).map(function(m){ return stat(m.name, im.perModule[m.id], lim && lim.perModule ? lim.perModule[m.id] : null, 'each'); }).join('') + '</div>' +
+        (im.milestones ? '<div class="hint" style="margin-top:10px">Paid in ' + im.milestones.length + ' parts: ' + im.milestones.map(function(m){ return esc(m.label) + ' ' + m.pct + '%'; }).join(', ') + '.</div>' : '') + '</div>';
+    }
+    $('book').innerHTML = html;
+  }
+
+  var VIEW = null; // { data, label, discountPct }
+  function loadVersion(id){
+    return PH.api('GET', '/api/price-lists/' + id).then(function(r){ return r.status === 200 ? r.json : null; });
+  }
+  function dataFor(pl, viewId){
+    if (viewId === 'base') return pl.data;
+    var c = pl.categories.filter(function(x){ return String(x.id) === viewId; })[0];
+    return c ? c.data : pl.data;
+  }
+  function refresh(){
+    if (!cur) return;
+    var viewId = $('viewSel').value;
+    var d = dataFor(cur, viewId);
+    var o = cmp ? dataFor(cmp, viewId) : null;
+    var disc = viewId === 'base' ? 0 : cur.categories.filter(function(x){ return String(x.id) === viewId; })[0].discountPct;
+    $('viewHint').textContent = viewId === 'base' ? 'Base prices, before any partner discount.' : 'These are the prices a partner in this category sees: base prices less ' + disc + '% on everything except Core HR.';
+    render(d, o, viewId === 'base' ? null : cur.data);
+  }
+
+  PH.boot(function(user){
+    me = user;
+    if (user.role === 'partner') {
+      // A partner sees only their own discounted prices
+      $('verBox').hidden = $('cmpBox').hidden = true; document.querySelector('#controls .bar').hidden = true;
+      $('viewBox').hidden = true;
+      PH.api('GET', '/api/price-list').then(function(r){
+        if (!r.json.data) { $('book').innerHTML = '<div class="card">No price list has been published yet.</div>'; return; }
+        $('viewHint').textContent = 'Your price is what you pay Victory Information. The list price is what you can charge your client, so the difference is your margin. Category: ' + r.json.category + ' (' + r.json.discountPct + '% off everything except Core HR).';
+        render(r.json.data, null, r.json.listData);
+      });
+      return;
+    }
+    PH.api('GET', '/api/price-lists').then(function(r){
+      versions = r.json || [];
+      if (!versions.length) { $('book').innerHTML = '<div class="card">No price list has been published yet.</div>'; return; }
+      $('verSel').innerHTML = versions.map(function(v){ return '<option value="' + v.id + '">' + (v.is_current ? 'Current' : 'Version ' + v.id) + (v.label ? ' · ' + esc(v.label) : '') + ' — ' + new Date(v.created_at).toLocaleDateString('en-GB') + '</option>'; }).join('');
+      $('cmpSel').innerHTML = '<option value="">No comparison</option>' + versions.map(function(v){ return '<option value="' + v.id + '">' + (v.is_current ? 'Current' : 'Version ' + v.id) + (v.label ? ' · ' + esc(v.label) : '') + '</option>'; }).join('');
+      function pick(){
+        var id = $('verSel').value, cid = $('cmpSel').value;
+        Promise.all([loadVersion(id), cid && cid !== id ? loadVersion(cid) : Promise.resolve(null)]).then(function(x){
+          cur = x[0]; cmp = x[1]; var keep = $('viewSel').value;
+          $('viewSel').innerHTML = '<option value="base">Base list (staff view)</option>' + cur.categories.map(function(c){ return '<option value="' + c.id + '">' + esc(c.name) + ' (' + c.discountPct + '% off)</option>'; }).join('');
+          if (keep && $('viewSel').querySelector('option[value="' + keep + '"]')) $('viewSel').value = keep;
+          refresh();
+        });
+      }
+      $('verSel').addEventListener('change', pick); $('cmpSel').addEventListener('change', pick);
+      $('viewSel').addEventListener('change', refresh);
+      pick();
+    });
+  });
+})();
+</script>
+</body>
+</html>

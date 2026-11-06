@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Price editor</title>
+<style>
+  :root { --bg:#f6f6fb; --surface:#fff; --s2:#eef0f8; --s3:#e4e6f2; --border:#dcdfeb; --text:#1b1c28; --muted:#5c5f74; --accent:#4338ca; --soft:#eceafc; --good:#15803d; --danger:#b91c1c; --warn:var(--warn-bg); }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 -apple-system,'Segoe UI',sans-serif; }
+  .wrap { max-width:1200px; margin:0 auto; padding:24px 20px 80px; }
+  h1 { font-size:22px; margin:0 0 4px; } h2 { font-size:15px; margin:0 0 4px; }
+  .sub { color:var(--muted); font-size:13px; margin-bottom:20px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:18px 20px; margin-bottom:16px; }
+  .hint { color:var(--muted); font-size:12px; margin-bottom:12px; max-width:90ch; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); padding:0 6px 8px; white-space:nowrap; }
+  td { padding:4px 6px; border-top:1px solid var(--border); }
+  td.name { min-width:210px; } td.name small { display:block; color:var(--muted); font-size:11px; }
+  tr.cat td { background:var(--s2); font-weight:700; border-top:2px solid var(--border); }
+  tr.cat td.num { text-align:right; font-variant-numeric:tabular-nums; }
+  tr.factor td { background:var(--soft); }
+  td.band { font-weight:600; white-space:nowrap; }
+  input[type=number], input[type=text] { width:100%; min-width:64px; padding:5px 7px; border:1px solid var(--border); border-radius:6px; background:var(--s2); font:inherit; text-align:right; }
+  input.ovr { background:var(--warn); border-color:var(--warn-bd); }
+  input.custom { background:var(--s3); font-style:italic; }
+  .table-wrap { overflow-x:auto; }
+  .row { display:flex; gap:16px; flex-wrap:wrap; align-items:flex-end; }
+  .field { display:flex; flex-direction:column; gap:4px; min-width:150px; } .field label { font-size:12px; color:var(--muted); }
+  button { padding:8px 14px; border-radius:7px; border:1px solid var(--border); background:var(--s2); font-weight:600; cursor:pointer; font:inherit; font-weight:600; }
+  .note { background:var(--soft); border:1px solid #d6d1f7; border-radius:8px; padding:10px 14px; margin-bottom:14px; font-size:13px; }
+  body.readonly #saveBtn, body.readonly #resetOvr { display:none; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .group { border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin-bottom:10px; background:var(--s2); }
+  .group h4 { margin:0 0 6px; font-size:12px; display:flex; gap:8px; align-items:center; }
+  .chips { display:flex; gap:6px 14px; flex-wrap:wrap; }
+  .chips label { display:flex; gap:6px; align-items:center; font-size:13px; cursor:pointer; }
+  .result { background:var(--soft); border:1px solid #d6d1f7; border-radius:10px; padding:14px 16px; margin-top:14px; }
+  .result .line { display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px dashed #d6d1f7; font-size:13px; gap:12px; }
+  .result .total { font-size:18px; font-weight:700; color:var(--accent); border:none; padding-top:8px; }
+  .status { font-size:12px; color:var(--good); }
+  #gate { position:fixed; inset:0; background:#0a0d1c; display:flex; align-items:center; justify-content:center; z-index:10; }
+  #gate .box { background:var(--surface); border-radius:12px; padding:28px; width:340px; }
+  #gate input { margin-bottom:12px; text-align:left; } #gate .err { color:var(--danger); font-size:12px; min-height:16px; }
+  body.authed #gate { display:none; } body:not(.authed) .wrap { display:none; }
+</style>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem("ph-theme")||"dark"}catch(e){}</script>
+<link rel="stylesheet" href="ui.css">
+</head>
+<body>
+
+<div id="gate">
+  <div class="box">
+    <h2>PeopleHub Price List</h2>
+    <div class="hint">Sign in with your PeopleHub pricing login.</div>
+    <input type="text" id="gUser" placeholder="Username" autocomplete="username">
+    <input type="password" id="gPass" placeholder="Password" autocomplete="current-password">
+    <div class="err" id="gErr"></div>
+    <button class="primary" id="gGo" style="width:100%">Log in</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <h1>Price editor</h1>
+  <div class="note" id="roleNote" hidden></div>
+  <div class="sub"><span>Monthly prices in USD unless stated.</span> <button class="primary" id="saveBtn">Save</button> <button id="resetOvr">Clear manual overrides</button> <span class="status" id="saveStatus"></span> <span style="flex:1"></span> <span id="whoami" class="hint" style="margin:0"></span> <button id="logoutBtn">Log out</button></div>
+
+  <div class="card">
+    <h2>Core HR — minimum fee, always included</h2>
+    <div class="hint">Core HR covers the minimum cost of running a client, so it is the <b>floor of every quote</b>: always charged in full, never discounted, never left out. Its price by band is set in the table below. It includes:</div>
+    <div class="chips" id="coreList"></div>
+  </div>
+
+  <div class="card">
+    <h2>Modules and Add-ons — price by employee band</h2>
+    <div class="hint">
+      Type a <b>base price</b> per item (the smallest band's monthly price). The <b>band multiplier</b> row scales every item to the larger bands.
+      To fix one price differently, type directly in its cell — it turns yellow. Leave the last band's multiplier blank for "custom quote".
+    </div>
+    <div class="table-wrap"><table id="moduleTable"></table></div>
+  </div>
+
+  <div class="card">
+    <h2>Administrator Seats, ESS Portal &amp; Storage — by employee band</h2>
+    <div class="hint">
+      One ESS Portal licence covers a Named Portal User on the web portal and the Android and iOS apps.
+      Free storage pool = the band's maximum employees × free storage per employee. Extra storage is sold in blocks.
+    </div>
+    <div class="row" style="margin-bottom:14px">
+      <div class="field"><label>Additional Administrator Seat — per seat / month</label><input type="number" id="extraSeat" min="0" step="0.01"></div>
+      <div class="field"><label>Free storage per employee (MB)</label><input type="number" id="freeMB" min="0" step="1"></div>
+      <div class="field"><label>Extra storage block size (GB)</label><input type="number" id="blockGB" min="1" step="1"></div>
+      <div class="field"><label>Price per extra block / month</label><input type="number" id="blockPrice" min="0" step="0.01"></div>
+    </div>
+    <div class="table-wrap"><table id="seatPortalTable"></table></div>
+  </div>
+
+  <div class="card">
+    <h2>Notifications, Integration &amp; Development</h2>
+    <div class="hint">In-app and push notifications are free. SMS, WhatsApp and email are charged per message sent. Integration work and custom development are billed per hour, once, on top of the monthly subscription. Development charges apply whenever a client needs something customised.</div>
+    <div class="row">
+      <div class="field"><label>SMS — per message</label><input type="number" id="nSms" min="0" step="0.001"></div>
+      <div class="field"><label>WhatsApp — per message</label><input type="number" id="nWa" min="0" step="0.001"></div>
+      <div class="field"><label>Email — per message</label><input type="number" id="nEmail" min="0" step="0.001"></div>
+      <div class="field"><label>Integration — per hour</label><input type="number" id="intHour" min="0" step="0.01"></div>
+      <div class="field"><label>WDMS configuration — per device / month (never discounted)</label><input type="number" id="wdmsRate" min="0" step="0.01"></div>
+      <div class="field"><label>Custom development — per hour</label><input type="number" id="devHour" min="0" step="0.01"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Implementation guideline</h2>
+    <div class="hint">Implementation depends on each client's requirements and scope, so partners and staff enter their own fee on every proposal. These numbers are only a <b>guideline</b> shown beside that field: a <b>base fee for the size of the company</b> plus a <b>fee for each module and add-on</b>. Nobody has to follow it, and discounts do not apply to implementation. The payment parts below are the standard split offered on each proposal. Leave everything at zero if you do not want to give a guideline.</div>
+    <h3>Base fee by number of employees</h3>
+    <div class="table-wrap"><table><thead><tr id="implHead"></tr></thead><tbody><tr id="implBase"></tr></tbody></table></div>
+    <h3>Additional fee for each module and add-on</h3>
+    <div class="row" id="implModules" style="gap:10px 18px"></div>
+    <h3>When the client pays it</h3>
+    <div class="hint" style="margin-bottom:8px">Only the first payment falls due at signing. The percentages must add up to 100.</div>
+    <div id="implMiles"></div>
+    <div style="margin-top:8px"><button id="implAddMile">+ Add a payment</button><span class="msg" id="implMsg"></span></div>
+  </div>
+
+  <div class="card">
+    <h2>Perpetual licence</h2>
+    <div class="hint">For clients who buy instead of subscribe. Licence fee = the monthly platform price (Core HR, modules, add-ons, seats, portal) × the multiplier. Annual maintenance is a percentage of the licence fee. Storage and notifications stay as monthly usage.</div>
+    <div class="row">
+      <div class="field"><label>Licence multiplier (months of subscription)</label><input type="number" id="perpMult" min="1" step="1"></div>
+      <div class="field"><label>Annual maintenance (% of licence fee)</label><input type="number" id="perpMaint" min="0" max="100" step="0.5"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Test calculator</h2>
+    <div class="hint">Try a client to check the table gives the number you expect. Nothing here is saved.</div>
+    <div class="row">
+      <div class="field"><label>Employees</label><input type="number" id="tEmp" value="180" min="0"></div>
+      <div class="field"><label>Administrator seats</label><input type="number" id="tSeats" value="3" min="0"></div>
+      <div class="field"><label>Portal users</label><input type="number" id="tPortal" value="150" min="0"></div>
+      <div class="field"><label>Extra storage needed (GB)</label><input type="number" id="tStorage" value="0" min="0"></div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <div class="field"><label>SMS / month</label><input type="number" id="tSms" value="0" min="0"></div>
+      <div class="field"><label>WhatsApp / month</label><input type="number" id="tWa" value="0" min="0"></div>
+      <div class="field"><label>Email / month</label><input type="number" id="tEmail" value="0" min="0"></div>
+      <div class="field"><label>Integration hours (one-time)</label><input type="number" id="tHours" value="0" min="0"></div>
+      <div class="field"><label>Customisation / development hours (one-time)</label><input type="number" id="tDev" value="0" min="0"></div>
+      <div class="field"><label>Discount % (modules &amp; add-ons only)</label><input type="number" id="tDisc" value="0" min="0" max="100"></div>
+    </div>
+    <div id="tModules" style="margin-top:14px"></div>
+    <div class="result" id="tResult"></div>
+  </div>
+</div>
+
+<script src="shell.js"></script>
+<script>
+(function(){
+  var me = null;
+  function api(method, url, body){
+    return fetch(url, {method:method, headers:{'Content-Type':'application/json'}, body: body === undefined ? undefined : JSON.stringify(body)})
+      .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return {status:r.status, json:j}; }); });
+  }
+
+  var DEFAULTS = {
+    version: 4,
+    bands: [
+      {label:'1 – 50', min:0, max:50}, {label:'51 – 100', min:51, max:100}, {label:'101 – 250', min:101, max:250},
+      {label:'251 – 500', min:251, max:500}, {label:'501 – 1,000', min:501, max:1000}, {label:'1,000+', min:1001, max:null}
+    ],
+    factors: [1, 1.7, 2.8, 4.5, 7, null],
+    seats: [3, 3, 5, 8, 12, 12],
+    portal: [1.5, 1.2, 1.0, 0.9, 0.8, null],
+    extraSeat: 25,
+    core: ['Employee Management', 'Organizational Structure & Hierarchy', 'Employee Life Cycle', 'Analytics & Dashboards', 'Compliance & Reporting', 'Security & Access Control', 'Core Workflows'],
+    groups: [{id:'core', name:'Core HR', mandatory:true}, {id:'module', name:'Modules'}, {id:'addon', name:'Add-ons'}],
+    items: [
+      {id:'corehr', group:'core', name:'Core HR', includes:'Employee Management, Organizational Structure & Hierarchy, Employee Life Cycle, Analytics & Dashboards, Compliance & Reporting, Security & Access Control, Core Workflows', base:120},
+      {id:'recruit', group:'module', name:'Recruitment & Termination', base:25},
+      {id:'time', group:'module', name:'Time & Attendance', includes:'includes Leave Management', base:30},
+      {id:'payroll', group:'module', name:'Payroll Management', includes:'includes Loan Management and Benefits Administration', base:40},
+      {id:'performance', group:'module', name:'Performance Management', base:20},
+      {id:'training', group:'module', name:'Training & Development', base:18},
+      {id:'succession', group:'module', name:'Succession Planning', base:15},
+      {id:'tasks', group:'module', name:'Task Management', base:12},
+      {id:'tickets', group:'addon', name:'Ticketing System', base:10},
+      {id:'grievance', group:'addon', name:'Grievance Handling', base:8},
+      {id:'assets', group:'addon', name:'Asset Management', base:10},
+      {id:'kb', group:'addon', name:'Knowledge Base', base:8},
+      {id:'chat', group:'addon', name:'Chat Option', base:8},
+      {id:'leisure', group:'addon', name:'Leisure Zone', base:6}
+    ],
+    notify: {sms:0.02, whatsapp:0.015, email:0.003},
+    storage: {freeMBPerEmployee:100, blockGB:5, blockPrice:5},
+    integrationHourly: 50,
+    developmentHourly: 60,
+    perpetual: {multiplier:24, maintenancePct:20},
+    implementation: {
+      base: [300, 500, 800, 1200, 1800, null],
+      perModule: {recruit:200, time:250, payroll:400, performance:200, training:150, succession:150, tasks:100, tickets:100, grievance:100, assets:100, kb:80, chat:80, leisure:60},
+      milestones: [{label:'On signing', pct:50}, {label:'At go-live', pct:30}, {label:'After hand-over', pct:20}]
+    },
+    overrides: {}
+  };
+  var list = JSON.parse(JSON.stringify(DEFAULTS));
+
+  function $(id){ return document.getElementById(id); }
+  function num(v){ return v === '' || v === null || v === undefined ? null : parseFloat(v); }
+  function r2(n){ return Math.round(n * 100) / 100; }
+  function money(n){ return '$' + (n||0).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+
+  // price of an item in a band: manual override, else base × band multiplier, else null (custom quote)
+  function priceOf(m, bi){
+    var o = list.overrides[m.id + '|' + bi];
+    if (o !== undefined && o !== null) return o;
+    var f = list.factors[bi];
+    if (m.base == null || f == null) return null;
+    return r2(m.base * f);
+  }
+  function groupSubtotal(gid, bi){
+    var sum = 0, custom = false;
+    list.items.forEach(function(m){ if (m.group !== gid) return; var p = priceOf(m, bi); if (p == null) custom = true; else sum += p; });
+    return custom ? null : sum;
+  }
+  function itemById(id){ return list.items.filter(function(x){ return x.id === id; })[0]; }
+  function freePoolGB(bi, employees){
+    var b = list.bands[bi], head = b.max === null ? employees : b.max;
+    return head * list.storage.freeMBPerEmployee / 1024;
+  }
+
+  function renderCore(){
+    $('coreList').innerHTML = list.core.map(function(n){ return '<span class="chip">✓ ' + n + '</span>'; }).join('');
+  }
+
+  function renderModuleTable(){
+    var html = '<tr><th>Item</th><th>Base price</th>' + list.bands.map(function(b){ return '<th style="text-align:right">' + b.label + '</th>'; }).join('') + '</tr>';
+    html += '<tr class="factor"><td class="name"><b>Band multiplier</b><small>Band 1 is always ×1</small></td><td></td>' +
+      list.bands.map(function(b, i){
+        return '<td>' + (i === 0 ? '<input type="number" value="1" disabled>' : '<input type="number" min="0" step="0.05" data-f="' + i + '" value="' + (list.factors[i] == null ? '' : list.factors[i]) + '" placeholder="custom">') + '</td>';
+      }).join('') + '</tr>';
+    list.groups.forEach(function(g){
+      html += '<tr class="cat"><td class="name">' + g.name + (g.mandatory ? ' <small>minimum fee — always charged, never discounted</small>' : ' <small>subtotal if all taken</small>') + '</td><td></td>' +
+        list.bands.map(function(b, i){ return '<td class="num" data-sub="' + g.id + '|' + i + '"></td>'; }).join('') + '</tr>';
+      list.items.filter(function(m){ return m.group === g.id; }).forEach(function(m){
+        html += '<tr><td class="name">' + m.name + (m.includes ? '<small>' + m.includes + '</small>' : '') + '</td><td><input type="number" min="0" step="0.01" data-b="' + m.id + '" value="' + (m.base == null ? '' : m.base) + '"></td>' +
+          list.bands.map(function(b, i){ return '<td><input type="number" min="0" step="0.01" data-c="' + m.id + '|' + i + '"></td>'; }).join('') + '</tr>';
+      });
+    });
+    $('moduleTable').innerHTML = html;
+
+    $('seatPortalTable').innerHTML = '<tr><th>Employee band</th><th>Admin seats included</th><th>ESS Portal — per Named Portal User / month</th><th style="text-align:right">Free storage pool</th></tr>' +
+      list.bands.map(function(b, i){
+        return '<tr><td class="band">' + b.label + '</td><td><input type="number" min="0" step="1" data-s="' + i + '" value="' + list.seats[i] + '"></td>' +
+          '<td><input type="number" min="0" step="0.01" data-e="' + i + '" value="' + (list.portal[i] == null ? '' : list.portal[i]) + '" placeholder="custom"></td>' +
+          '<td class="num" data-pool="' + i + '" style="text-align:right"></td></tr>';
+      }).join('');
+    $('extraSeat').value = list.extraSeat;
+    $('freeMB').value = list.storage.freeMBPerEmployee; $('blockGB').value = list.storage.blockGB; $('blockPrice').value = list.storage.blockPrice;
+    $('nSms').value = list.notify.sms; $('nWa').value = list.notify.whatsapp; $('nEmail').value = list.notify.email; $('intHour').value = list.integrationHourly; $('wdmsRate').value = list.wdmsPerDevice != null ? list.wdmsPerDevice : 3; $('devHour').value = list.developmentHourly == null ? 0 : list.developmentHourly;
+    var pp = list.perpetual || {multiplier:24, maintenancePct:20}; $('perpMult').value = pp.multiplier; $('perpMaint').value = pp.maintenancePct;
+    renderImpl();
+    refreshCells();
+  }
+
+  // ---- implementation fee
+  function implOf(){
+    if (!list.implementation) list.implementation = { base: list.bands.map(function(){ return 0; }), perModule: {}, milestones: [{label:'On signing', pct:50}, {label:'At go-live', pct:30}, {label:'After hand-over', pct:20}] };
+    return list.implementation;
+  }
+  function renderImpl(){
+    var im = implOf();
+    $('implHead').innerHTML = list.bands.map(function(b){ return '<th style="text-align:right">' + b.label + '</th>'; }).join('');
+    $('implBase').innerHTML = list.bands.map(function(b, i){ return '<td><input type="number" min="0" step="1" data-ib="' + i + '" value="' + (im.base[i] == null ? '' : im.base[i]) + '" placeholder="custom" style="text-align:right"></td>'; }).join('');
+    $('implModules').innerHTML = list.items.filter(function(m){ return m.group !== 'core'; }).map(function(m){
+      return '<div class="field" style="min-width:170px"><label>' + m.name + '</label><input type="number" min="0" step="1" data-im="' + m.id + '" value="' + (im.perModule[m.id] || 0) + '"></div>';
+    }).join('');
+    $('implMiles').innerHTML = im.milestones.map(function(m, i){
+      return '<div class="row" style="margin-bottom:6px"><div class="field" style="flex:1"><input type="text" maxlength="40" data-ml="' + i + '" value="' + m.label.replace(/"/g, '&quot;') + '"></div><div class="field" style="width:110px"><input type="number" min="1" max="100" step="1" data-mp="' + i + '" value="' + m.pct + '"></div><button class="link danger" data-md="' + i + '">Remove</button></div>';
+    }).join('');
+  }
+  function readImpl(){
+    var im = implOf();
+    document.querySelectorAll('[data-ib]').forEach(function(el){ im.base[+el.dataset.ib] = num(el.value); });
+    document.querySelectorAll('[data-im]').forEach(function(el){ var v = num(el.value) || 0; if (v > 0) im.perModule[el.dataset.im] = v; else delete im.perModule[el.dataset.im]; });
+    document.querySelectorAll('[data-ml]').forEach(function(el){ im.milestones[+el.dataset.ml].label = el.value.trim() || 'Payment'; });
+    document.querySelectorAll('[data-mp]').forEach(function(el){ im.milestones[+el.dataset.mp].pct = num(el.value) || 0; });
+    var total = im.milestones.reduce(function(t, m){ return t + m.pct; }, 0);
+    $('implMsg').textContent = Math.abs(total - 100) > 0.01 ? 'Payments add up to ' + total + '%, they must add up to 100%.' : '';
+    $('implMsg').className = 'msg err';
+  }
+  document.addEventListener('input', function(e){ if (e.target.closest('#implBase,#implModules,#implMiles')) readImpl(); });
+  document.addEventListener('click', function(e){
+    if (e.target.id === 'implAddMile') { var im = implOf(); if (im.milestones.length < 6) { im.milestones.push({label:'Payment', pct:10}); renderImpl(); readImpl(); } }
+    if (e.target.dataset && e.target.dataset.md !== undefined) { var im2 = implOf(); if (im2.milestones.length > 1) { im2.milestones.splice(+e.target.dataset.md, 1); renderImpl(); readImpl(); } }
+  });
+
+  // update computed cells without disturbing the cell being typed in
+  function refreshCells(){
+    var active = document.activeElement;
+    document.querySelectorAll('[data-c]').forEach(function(el){
+      var k = el.dataset.c.split('|'), m = itemById(k[0]), bi = +k[1];
+      var isOvr = list.overrides[k[0] + '|' + bi] !== undefined;
+      var p = priceOf(m, bi);
+      if (el !== active) el.value = p == null ? '' : p;
+      el.placeholder = p == null ? 'custom' : '';
+      el.className = isOvr ? 'ovr' : (p == null ? 'custom' : '');
+    });
+    document.querySelectorAll('[data-sub]').forEach(function(el){
+      var k = el.dataset.sub.split('|'), s = groupSubtotal(k[0], +k[1]);
+      el.textContent = s == null ? 'custom' : money(s);
+    });
+    document.querySelectorAll('[data-pool]').forEach(function(el){
+      var bi = +el.dataset.pool;
+      el.textContent = list.bands[bi].max === null ? 'employees × ' + list.storage.freeMBPerEmployee + ' MB' : (Math.round(freePoolGB(bi) * 10) / 10) + ' GB';
+    });
+  }
+
+  function readInputs(){
+    document.querySelectorAll('[data-b]').forEach(function(el){ itemById(el.dataset.b).base = num(el.value); });
+    document.querySelectorAll('[data-f]').forEach(function(el){ list.factors[+el.dataset.f] = num(el.value); });
+    document.querySelectorAll('[data-s]').forEach(function(el){ list.seats[+el.dataset.s] = num(el.value) || 0; });
+    document.querySelectorAll('[data-e]').forEach(function(el){ list.portal[+el.dataset.e] = num(el.value); });
+    list.extraSeat = num($('extraSeat').value) || 0;
+    list.storage.freeMBPerEmployee = num($('freeMB').value) || 0;
+    list.storage.blockGB = num($('blockGB').value) || 1;
+    list.storage.blockPrice = num($('blockPrice').value) || 0;
+    list.notify.sms = num($('nSms').value) || 0; list.notify.whatsapp = num($('nWa').value) || 0; list.notify.email = num($('nEmail').value) || 0;
+    list.integrationHourly = num($('intHour').value) || 0; list.wdmsPerDevice = num($('wdmsRate').value) || 0;
+    list.developmentHourly = num($('devHour').value) || 0;
+    list.perpetual = {multiplier: num($('perpMult').value) || 1, maintenancePct: num($('perpMaint').value) || 0};
+    readImpl();
+  }
+
+  function onCellEdit(el){
+    var k = el.dataset.c, v = num(el.value), m = itemById(k.split('|')[0]), bi = +k.split('|')[1];
+    delete list.overrides[k];
+    var auto = priceOf(m, bi);
+    if (v !== null && v !== auto) list.overrides[k] = v;
+  }
+
+  function bandIndex(emp){
+    for (var i = 0; i < list.bands.length; i++) { var b = list.bands[i]; if (emp >= b.min && (b.max === null || emp <= b.max)) return i; }
+    return list.bands.length - 1;
+  }
+
+  var testPicked = {};
+  function renderTestModules(){
+    $('tModules').innerHTML = list.groups.map(function(g){
+      if (g.mandatory) return '';
+      var items = list.items.filter(function(m){ return m.group === g.id; });
+      return '<div class="group"><h4><input type="checkbox" data-tcat="' + g.id + '">' + g.name + ' — select all</h4><div class="chips">' +
+        items.map(function(m){ return '<label><input type="checkbox" data-t="' + m.id + '"' + (testPicked[m.id] ? ' checked' : '') + '> ' + m.name + '</label>'; }).join('') + '</div></div>';
+    }).join('');
+  }
+
+  function calc(){
+    var emp = num($('tEmp').value) || 0, seats = num($('tSeats').value) || 0, portalUsers = num($('tPortal').value) || 0;
+    var bi = bandIndex(emp), band = list.bands[bi], lines = [], recurring = 0, custom = false, discountable = 0;
+        list.groups.forEach(function(g){
+      var sum = 0, n = 0, cu = false;
+      list.items.forEach(function(m){
+        if (m.group !== g.id) return;
+        var el = document.querySelector('[data-t="' + m.id + '"]');
+        if (!(g.mandatory || (el && el.checked))) return;
+        var p = priceOf(m, bi); n++;
+        if (p == null) cu = true; else sum += p;
+      });
+      lines.push(['<b>' + g.name + '</b> (' + (g.mandatory ? 'always included' : n + ' selected') + ')', cu ? 'custom quote' : money(sum)]);
+      if (cu) custom = true; else { recurring += sum; if (!g.mandatory) discountable += sum; }
+    });
+
+    var discPct = Math.min(100, Math.max(0, num($('tDisc').value) || 0)), discount = discountable * discPct / 100;
+    if (discPct) { lines.push(['Discount ' + discPct + '% on modules and add-ons (Core HR is never discounted)', '-' + money(discount)]); recurring -= discount; }
+
+    var included = list.seats[bi], extra = Math.max(0, seats - included), extraCost = extra * list.extraSeat;
+    lines.push(['Additional Administrator Seats (' + extra + ' over ' + included + ' included × ' + money(list.extraSeat) + ')', money(extraCost)]);
+    recurring += extraCost;
+
+    var pr = list.portal[bi], portalCost = pr == null ? 0 : portalUsers * pr;
+    lines.push(['ESS Portal (' + portalUsers + ' users × ' + (pr == null ? 'custom' : money(pr)) + ')', pr == null ? 'custom quote' : money(portalCost)]);
+    if (pr == null) custom = true; else recurring += portalCost;
+
+    var pool = freePoolGB(bi, emp), needed = num($('tStorage').value) || 0;
+    var blocks = Math.ceil(needed / (list.storage.blockGB || 1)), storageCost = blocks * list.storage.blockPrice;
+    lines.push(['Storage: ' + (Math.round(pool * 10) / 10) + ' GB free pool' + (needed ? '; extra ' + needed + ' GB = ' + blocks + ' × ' + list.storage.blockGB + ' GB block(s)' : ''), money(storageCost)]);
+    recurring += storageCost;
+
+    var sms = num($('tSms').value) || 0, wa = num($('tWa').value) || 0, em = num($('tEmail').value) || 0;
+    var notif = sms * list.notify.sms + wa * list.notify.whatsapp + em * list.notify.email;
+    lines.push(['Notifications (in-app and push free; SMS ' + sms + ', WhatsApp ' + wa + ', email ' + em + ' / month)', money(notif)]);
+    recurring += notif;
+
+    var hours = num($('tHours').value) || 0, integ = hours * list.integrationHourly;
+    var devHours = num($('tDev').value) || 0, devRate = list.developmentHourly || 0, dev = devHours * devRate;
+
+    $('tResult').innerHTML =
+      '<div class="line"><span>Employee band</span><span>' + band.label + '</span></div>' +
+      lines.map(function(l){ return '<div class="line"><span>' + l[0] + '</span><span>' + l[1] + '</span></div>'; }).join('') +
+      '<div class="line total"><span>Monthly recurring</span><span>' + (custom ? 'Custom quote' : money(recurring)) + '</span></div>' +
+      '<div class="line"><span>Integration (' + hours + ' h × ' + money(list.integrationHourly) + ') — one-time</span><span>' + money(integ) + '</span></div>' +
+      '<div class="line"><span>Customisation / development (' + devHours + ' h × ' + money(devRate) + ') — one-time</span><span>' + money(dev) + '</span></div>' +
+      '<div class="line total"><span>One-time charges</span><span>' + money(integ + dev) + '</span></div>';
+  }
+
+  function save(){
+    readInputs();
+    $('saveStatus').textContent = 'Saving…';
+    api('PUT', '/api/price-list?label=' + encodeURIComponent((prompt('Name this version (optional), e.g. "2027 launch prices":', '') || '').slice(0, 120)), list).then(function(r){
+      $('saveStatus').textContent = r.status === 200 ? 'Saved to the database.' : ('Not saved: ' + (r.json.error || r.status));
+    }).catch(function(){ $('saveStatus').textContent = 'Not saved: cannot reach the server.'; });
+  }
+
+  function apply(j){ if (j && j.version === 4 && j.items) { list = j; renderCore(); renderModuleTable(); renderTestModules(); calc(); } }
+
+  function setReadonly(on){
+    document.body.classList.toggle('readonly', on);
+    document.querySelectorAll('#moduleTable input, #seatPortalTable input, .wrap > .card:not(:last-child) .row input').forEach(function(el){ if (on) el.disabled = true; });
+  }
+
+  function load(){
+    api('GET', '/api/price-list').then(function(r){
+      var isAdmin = me.role === 'admin';
+      if (r.status === 200 && r.json.data) { list = r.json.data; }
+      else if (isAdmin) { $('roleNote').hidden = false; $('roleNote').textContent = 'No price list has been saved yet. These are starter placeholder prices — edit them and press Save.'; }
+      else { $('roleNote').hidden = false; $('roleNote').textContent = 'No price list has been published yet. Please ask your PeopleHub contact.'; }
+      renderCore(); renderModuleTable(); renderTestModules(); calc();
+      setReadonly(!isAdmin);
+      if (me.role === 'partner') { $('roleNote').hidden = false; $('roleNote').innerHTML = '<b>' + me.partner.company + '</b> — your prices (' + me.partner.category + ' partner). Core HR is the minimum fee and is not discounted.'; }
+      else if (me.role === 'staff') { $('roleNote').hidden = false; $('roleNote').textContent = 'You can view the price list. Only an Admin can change it.'; }
+    });
+  }
+
+  function unlock(user){
+    if (user.role !== 'admin') { location.replace('price-book.html'); return; }
+    me = user;
+    $('whoami').textContent = user.username + ' (' + user.role + ')';
+    document.body.classList.add('authed'); if (window.PHShell) PHShell.refresh(user);
+    load();
+  }
+  $('gGo').addEventListener('click', function(){
+    $('gErr').textContent = '';
+    api('POST', '/api/auth/login', {username: $('gUser').value, password: $('gPass').value}).then(function(r){
+      if (r.status === 200) { $('gPass').value = ''; unlock(r.json); }
+      else { $('gErr').textContent = r.json.error || 'Could not sign in.'; }
+    }).catch(function(){ $('gErr').textContent = 'Cannot reach the server.'; });
+  });
+  $('gPass').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('gGo').click(); });
+  $('gUser').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('gGo').click(); });
+  $('logoutBtn').addEventListener('click', function(){ api('POST', '/api/auth/logout', {}).then(function(){ location.reload(); }); });
+  $('saveBtn').addEventListener('click', save);
+  $('resetOvr').addEventListener('click', function(){ list.overrides = {}; refreshCells(); calc(); });
+
+  document.addEventListener('input', function(e){
+    var t = e.target;
+    if (!t.matches('input')) return;
+    if (t.dataset.c) onCellEdit(t); else if (!t.dataset.t && !t.dataset.tcat && t.id.charAt(0) !== 't') readInputs();
+    if (t.dataset.t || t.dataset.tcat) {
+      if (t.dataset.tcat) list.items.forEach(function(m){ if (m.group === t.dataset.tcat) { testPicked[m.id] = t.checked; var c = document.querySelector('[data-t="' + m.id + '"]'); if (c) c.checked = t.checked; } });
+      else testPicked[t.dataset.t] = t.checked;
+    }
+    refreshCells(); calc();
+  });
+
+  api('GET', '/api/auth/me').then(function(r){ if (r.status === 200) unlock(r.json); }).catch(function(){});
+})();
+</script>
+</body>
+</html>

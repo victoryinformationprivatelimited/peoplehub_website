@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Proposal wording</title>
+<style>
+  .cols { display:grid; grid-template-columns:320px minmax(0,1fr); gap:20px; align-items:start; } @media (max-width:980px) { .cols { grid-template-columns:1fr; } }
+  .list { position:sticky; top:84px; max-height:calc(100vh - 110px); overflow:auto; }
+  .part { text-transform:uppercase; letter-spacing:.16em; font-size:10.5px; font-weight:800; color:var(--accent-d); margin:14px 0 4px; } .part:first-child { margin-top:0; }
+  .sec { display:flex; justify-content:space-between; gap:8px; align-items:center; width:100%; text-align:left; padding:9px 12px; border-radius:11px; border:1px solid transparent; background:none; font-weight:650; color:var(--text); cursor:pointer; margin-bottom:2px; }
+  .sec:hover { background:var(--hover); } .sec.on { background:var(--soft); border-color:var(--accent-bd); }
+  .sec .tg { font-size:10.5px; font-weight:800; padding:1px 8px; border-radius:99px; background:var(--info-bg); color:var(--info-fg); white-space:nowrap; } .sec .tg.gen { background:var(--neu-bg); color:var(--neu-fg); }
+  textarea.wordbox { min-height:360px; font-family:ui-monospace,Consolas,monospace; font-size:13px; line-height:1.6; }
+  .prev { background:#fff; color:#1f2d28; border-radius:12px; padding:22px 26px; font-family:'Segoe UI',Arial,sans-serif; font-size:14px; line-height:1.6; }
+  .tb { display:flex; gap:6px; flex-wrap:wrap; margin:6px 0; } .tb button { padding:6px 12px; border-radius:9px; font-weight:700; }
+  .prev figure { margin:10px 0; text-align:center; } .prev figure img { max-width:100%; max-height:240px; border-radius:6px; } .prev figcaption { font-size:12px; color:#5a6b64; } .prev a { color:#0b6b4f; }
+  .prev h4 { margin:12px 0 4px; color:#0b6b4f; font-size:14px; } .prev p { margin:0 0 8px; } .prev ul { margin:4px 0 10px; padding-left:20px; }
+  .help { background:var(--s2); border-radius:12px; padding:12px 16px; font-size:13px; color:var(--muted); margin-bottom:14px; } .help code { background:var(--s3); }
+  .scopeTag { display:inline-block; font-size:12px; font-weight:700; padding:3px 12px; border-radius:99px; background:var(--soft); color:var(--accent-d); }
+</style>
+<link rel="stylesheet" href="ui.css">
+</head>
+<body>
+<div id="gate"><div class="box">
+  <h2>Proposal wording</h2><div class="hint">Sign in with your PeopleHub login.</div>
+  <input type="text" id="gUser" placeholder="Username" autocomplete="username">
+  <input type="password" id="gPass" placeholder="Password" autocomplete="current-password">
+  <div class="err" id="gErr"></div><button class="primary" id="gGo">Log in</button>
+</div></div>
+
+<div class="wrap">
+  <div class="top"><h1>Proposal wording</h1><div class="sp"></div><span class="scopeTag" id="scopeTag"></span></div>
+  <div class="sub" id="subLine">The written sections of every proposal. Change the wording once and every new proposal uses it. Proposals already sent keep the wording they were sent with.</div>
+
+  <div class="cols">
+    <div class="card list" id="list"></div>
+    <div>
+      <div class="card" id="editor">
+        <div class="hint">Choose a section on the left.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="shell.js"></script>
+<script src="app.js"></script>
+<script src="doc.js"></script>
+<script>
+(function(){
+  var $ = PH.$, esc = PH.esc, data = null, cur = null, me = null;
+  function load(){
+    PH.api('GET', '/api/proposal-sections').then(function(r){
+      data = r.json; $('scopeTag').textContent = 'Editing: ' + data.scope;
+      if (!data.editable) $('subLine').textContent = 'You can read the section wording here. Only the partner owner (or a Victory admin) can change it.';
+      drawList(); if (cur) open(cur);
+    });
+  }
+  function drawList(){
+    var lastPart = null, h = '';
+    data.sections.forEach(function(s){
+      if (s.part !== lastPart) { h += '<div class="part">' + esc(s.part) + '</div>'; lastPart = s.part; }
+      h += '<button class="sec' + (cur === s.key ? ' on' : '') + '" data-k="' + s.key + '"><span>' + esc(s.title) + '</span>' + (s.kind === 'generated' ? '<span class="tg gen">automatic</span>' : s.custom ? '<span class="tg">' + (s.custom === 'partner' ? 'yours' : 'edited') + '</span>' : '') + '</button>';
+    });
+    $('list').innerHTML = h;
+  }
+  function sample(){ return { client: 'Acme Garments', company: me && me.partner ? me.partner.company : 'Victory Information', employees: '250', date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }), validity: '30', ref: 'VI-PH-0000-0000' }; }
+  function open(k){
+    cur = k; var s = data.sections.filter(function(x){ return x.key === k; })[0]; if (!s) return;
+    drawList();
+    if (s.kind === 'generated') {
+      $('editor').innerHTML = '<h2>' + esc(s.title) + '</h2><div class="help">This section is built automatically from the quote (the prices, modules, users and dates), so there is no wording to edit. It appears in these proposal styles: ' + s.styles.join(', ') + '.</div>';
+      return;
+    }
+    var can = data.editable;
+    $('editor').innerHTML = '<h2>' + esc(s.title) + '</h2><div class="hint" style="margin-bottom:10px">Appears in: ' + s.styles.join(', ') + (s.custom ? ' · currently ' + (s.custom === 'partner' ? 'your own version' : 'edited by Victory') : ' · standard wording') + '</div>' +
+      '<div class="help"><b>Writing tips.</b> Use the buttons above the box, or type: a blank line starts a new paragraph. Start a line with <code>- </code> for a bullet and <code>## </code> for a small heading. Use <code>**bold**</code> for emphasis. These fill in automatically: <code>{{client}}</code> the client, <code>{{company}}</code> you, <code>{{employees}}</code>, <code>{{date}}</code>, <code>{{validity}}</code> days, <code>{{ref}}</code>.</div>' +
+      '<label>Section title</label><input type="text" id="eTitle" maxlength="120" value="' + esc(s.title) + '"' + (can ? '' : ' disabled') + '>' +
+      '<div style="height:12px"></div><label>Text</label>' + (can ? '<div class="tb"><button type="button" data-f="b" title="Bold"><b>B</b></button><button type="button" data-f="h">Heading</button><button type="button" data-f="li">&bull; Bullet</button><button type="button" data-f="a">Link</button><button type="button" data-f="img">Insert picture</button><button type="button" data-f="ph">Insert name</button><input type="file" id="eFile" accept="image/png,image/jpeg,image/webp" hidden></div>' : '') + '<textarea class="wordbox" id="eBody" maxlength="12000"' + (can ? '' : ' disabled') + '>' + esc(s.body) + '</textarea>' +
+      (can ? '<div style="margin-top:12px"><button class="primary" id="eSave">Save</button> ' + (s.custom ? '<button id="eReset">Go back to the standard wording</button> ' : '') + '<span class="msg" id="eMsg"></span></div>' : '') +
+      '<h3>How it will look</h3><div class="prev" id="ePrev"></div>';
+    var prev = function(){ $('ePrev').innerHTML = '<h2 style="margin:0 0 8px;font-size:19px;color:#0b6b4f;border-bottom:2px solid #dce7e2;padding-bottom:5px">' + esc($('eTitle').value) + '</h2>' + PHDoc.fmt($('eBody').value, sample()); };
+    prev(); $('eBody').addEventListener('input', prev); $('eTitle').addEventListener('input', prev);
+  }
+  function wrap(ta, pre, post, ph){
+    var a = ta.selectionStart, b = ta.selectionEnd, sel = ta.value.slice(a, b) || ph;
+    ta.setRangeText(pre + sel + post, a, b, 'select'); ta.focus(); ta.dispatchEvent(new Event('input'));
+  }
+  function lineStart(ta, mark){
+    var a = ta.selectionStart, s = ta.value.lastIndexOf('\n', a - 1) + 1;
+    ta.setRangeText(mark, s, s, 'end'); ta.focus(); ta.dispatchEvent(new Event('input'));
+  }
+  function insertBlock(ta, text){
+    var a = ta.selectionStart, before = ta.value.slice(0, a), pad = before && !/\n\n$/.test(before) ? (/\n$/.test(before) ? '\n' : '\n\n') : '';
+    ta.setRangeText(pad + text + '\n\n', a, ta.selectionEnd, 'end'); ta.focus(); ta.dispatchEvent(new Event('input'));
+  }
+  $('editor').addEventListener('click', function(e){
+    var f = e.target.closest('[data-f]'); if (!f) return; var ta = $('eBody');
+    if (f.dataset.f === 'b') wrap(ta, '**', '**', 'bold text');
+    if (f.dataset.f === 'h') lineStart(ta, '## ');
+    if (f.dataset.f === 'li') lineStart(ta, '- ');
+    if (f.dataset.f === 'a') { var u = prompt('Web address (starting with https://)'); if (u && /^https?:\/\//.test(u)) wrap(ta, '[', '](' + u.trim() + ')', 'link text'); else if (u) alert('The address must start with http:// or https://'); }
+    if (f.dataset.f === 'ph') { var n = prompt('Which name? client, company, employees, date, validity or ref', 'client'); if (n && /^(client|company|employees|date|validity|ref)$/.test(n.trim())) wrap(ta, '{{' + n.trim() + '}}', '', ''); }
+    if (f.dataset.f === 'img') $('eFile').click();
+  });
+  $('editor').addEventListener('change', function(e){
+    if (e.target.id !== 'eFile' || !e.target.files[0]) return;
+    var file = e.target.files[0];
+    if (file.size > 400 * 1024) { alert('That picture is over 400 KB. Please use a smaller one.'); e.target.value = ''; return; }
+    var fr = new FileReader();
+    fr.onload = function(){
+      PH.api('POST', '/api/images', { name: file.name, data: fr.result }).then(function(r){
+        if (r.status !== 201) { alert(r.json.error || 'Could not upload the picture'); return; }
+        var cap = prompt('Caption under the picture (optional)', '') || '';
+        insertBlock($('eBody'), '![' + cap.replace(/[\[\]\n]/g, ' ') + '](img:' + r.json.id + ')');
+      });
+    };
+    fr.readAsDataURL(file); e.target.value = '';
+  });
+  $('list').addEventListener('click', function(e){ var b = e.target.closest('[data-k]'); if (b) open(b.dataset.k); });
+  $('editor').addEventListener('click', function(e){
+    if (e.target.id === 'eSave') PH.api('PUT', '/api/proposal-sections/' + cur, { title: $('eTitle').value, body: $('eBody').value }).then(function(r){ if (r.status === 200) { PH.say($('eMsg'), 'Saved. New proposals will use this wording.', true); load(); } else PH.say($('eMsg'), r.json.error || 'Could not save', false); });
+    if (e.target.id === 'eReset' && confirm('Go back to the standard wording for this section? Your version is removed.')) PH.api('DELETE', '/api/proposal-sections/' + cur).then(function(){ load(); });
+  });
+  PH.boot(function(user){ me = user; load(); });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Audit log</title>
+<style>
+  .act { font-family:ui-monospace,Consolas,monospace; font-size:12.5px; background:var(--s3); border-radius:6px; padding:2px 8px; white-space:nowrap; }
+  td { font-size:13px; } td.t { white-space:nowrap; color:var(--muted); }
+  .empty { text-align:center; padding:44px 20px; color:var(--muted); }
+</style>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem("ph-theme")||"dark"}catch(e){}</script>
+<link rel="stylesheet" href="ui.css">
+</head>
+<body>
+<div id="gate"><div class="box">
+  <h2>Audit log</h2><div class="hint">Admin sign-in required.</div>
+  <input type="text" id="gUser" placeholder="Username" autocomplete="username">
+  <input type="password" id="gPass" placeholder="Password" autocomplete="current-password">
+  <div class="err" id="gErr"></div><button class="primary" id="gGo">Log in</button>
+</div></div>
+
+<div class="wrap">
+  <div class="top"><h1>Audit log</h1></div>
+  <div class="sub">Who changed prices, categories, logins, discounts and commissions. The newest 300 entries.</div>
+  <div class="card">
+    <input type="search" id="q" placeholder="Search by action, person or detail" style="max-width:360px;margin-bottom:10px">
+    <div class="table-wrap"><table><thead><tr><th>When</th><th>Who</th><th>Action</th><th>Detail</th></tr></thead><tbody id="rows"></tbody></table></div>
+    <div class="empty" id="empty" hidden>Nothing recorded yet.</div>
+  </div>
+</div>
+
+<script src="shell.js"></script>
+<script src="app.js"></script>
+<script>
+(function(){
+  var $ = PH.$, esc = PH.esc, qt;
+  function load(){
+    var q = $('q').value.trim();
+    PH.api('GET', '/api/audit' + (q ? '?q=' + encodeURIComponent(q) : '')).then(function(r){
+      if (r.status !== 200) { $('rows').innerHTML = '<tr><td colspan="4" class="hint">' + esc(r.json.error || 'Not allowed') + '</td></tr>'; return; }
+      $('empty').hidden = r.json.length > 0;
+      $('rows').innerHTML = r.json.map(function(x){ return '<tr><td class="t">' + new Date(x.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + '</td><td>' + esc(x.username || 'Client / system') + '</td><td><span class="act">' + esc(x.action) + '</span></td><td>' + esc(x.detail || '') + '</td></tr>'; }).join('');
+    });
+  }
+  $('q').addEventListener('input', function(){ clearTimeout(qt); qt = setTimeout(load, 250); });
+  PH.boot(function(user){ if (user.role !== 'admin') { $('rows').innerHTML = '<tr><td colspan="4" class="hint">Only an admin can see the audit log.</td></tr>'; return; } load(); });
+})();
+</script>
+</body>
+</html>

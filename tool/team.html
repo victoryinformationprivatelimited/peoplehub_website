@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>My team</title>
+<style>
+  .wrap { max-width: 1000px; }
+  .urow { display:grid; grid-template-columns:44px 1fr auto auto; gap:14px; align-items:center; padding:14px 0; border-top:1px solid var(--border); }
+  .urow:first-child { border-top:none; }
+  .urow .av { width:44px; height:44px; border-radius:13px; background:var(--soft); color:var(--accent-d); display:grid; place-items:center; font-weight:750; }
+  .urow b { display:block; } .urow small { color:var(--muted); }
+  .urow.off { opacity:.55; }
+  .secret { background:var(--ink); color:#fff; border-radius:14px; padding:18px 20px; margin-bottom:18px; }
+  .secret code { display:inline-block; background:rgba(255,255,255,.1); padding:6px 12px; border-radius:8px; font-size:17px; letter-spacing:.04em; margin:6px 0; user-select:all; }
+  .secret small { color:var(--muted); display:block; }
+  @media (max-width:640px){ .urow { grid-template-columns:44px 1fr; } .urow .acts { grid-column:1 / -1; } }
+</style>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem("ph-theme")||"dark"}catch(e){}</script>
+<link rel="stylesheet" href="ui.css">
+</head>
+<body>
+<div id="gate"><div class="box">
+  <h2>My team</h2><div class="hint">Sign in with your partner login.</div>
+  <input type="text" id="gUser" placeholder="Username" autocomplete="username">
+  <input type="password" id="gPass" placeholder="Password" autocomplete="current-password">
+  <div class="err" id="gErr"></div><button class="primary" id="gGo">Log in</button>
+</div></div>
+
+<div class="wrap">
+  <div class="top"><h1>My team</h1></div>
+  <div class="sub" id="subLine">Add colleagues so they can work on the same customers and proposals under your company.</div>
+
+  <div class="secret" id="secret" hidden>
+    <b id="secretTitle"></b>
+    <div><code id="secretPw"></code></div>
+    <small>Shown only once. Give it to them securely. They must choose their own password the first time they sign in.</small>
+    <button id="secretDone" style="margin-top:10px">I have noted it</button>
+  </div>
+
+  <div class="card">
+    <h2>Add a team member</h2>
+    <div class="grid">
+      <div><label>Username *</label><input type="text" id="nUser" maxlength="40" placeholder="e.g. nimal.silva" autocomplete="off"></div>
+      <div><label>Full name</label><input type="text" id="nName" maxlength="120"></div>
+      <div><label>Email</label><input type="email" id="nEmail" maxlength="160" placeholder="for password reset links"></div>
+    </div>
+    <button class="primary" id="nAdd">Add member</button><span class="msg" id="nMsg"></span>
+    <div class="hint" style="margin-top:10px" id="limitHint"></div>
+  </div>
+
+  <div class="card">
+    <h2>People in your company</h2>
+    <div id="list"></div>
+  </div>
+</div>
+
+<script src="shell.js"></script>
+<script src="app.js"></script>
+<script>
+(function(){
+  var $ = PH.$, esc = PH.esc, me = null;
+  function showSecret(title, pw){ $('secretTitle').textContent = title; $('secretPw').textContent = pw; $('secret').hidden = false; window.scrollTo(0, 0); }
+  $('secretDone').addEventListener('click', function(){ $('secret').hidden = true; $('secretPw').textContent = ''; });
+  function load(){
+    PH.api('GET', '/api/team').then(function(r){
+      if (r.status !== 200) { $('list').innerHTML = '<div class="hint">' + esc(r.json.error || 'Could not load the team.') + '</div>'; return; }
+      var u = r.json.users;
+      $('limitHint').textContent = u.length + ' of ' + r.json.maxUsers + ' logins used.';
+      $('list').innerHTML = u.map(function(x){
+        var name = x.display_name || x.username, owner = x.partner_role === 'owner';
+        return '<div class="urow' + (x.active ? '' : ' off') + '"><div class="av">' + esc(name.charAt(0).toUpperCase()) + '</div>' +
+          '<div><b>' + esc(name) + (owner ? ' <span class="tag">Owner</span>' : '') + (x.active ? '' : ' <span class="tag off">Inactive</span>') + (x.must_change_password ? ' <span class="tag">Awaiting first sign-in</span>' : '') + '</b><small>@' + esc(x.username) + (x.email ? ' · ' + esc(x.email) : '') + '</small></div>' +
+          '<div></div><div class="acts">' + (owner ? '' : '<button data-reset="' + x.id + '" data-n="' + esc(name) + '">Reset password</button> <button data-act="' + x.id + '" data-on="' + (x.active ? '0' : '1') + '">' + (x.active ? 'Deactivate' : 'Reactivate') + '</button>') + '</div></div>';
+      }).join('');
+    });
+  }
+  $('list').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.reset) {
+      if (!confirm('Issue a new temporary password for ' + b.dataset.n + '? Their current password stops working.')) return;
+      PH.api('POST', '/api/team/' + b.dataset.reset + '/reset-password').then(function(r){ if (r.status === 200) { showSecret('Temporary password for ' + b.dataset.n, r.json.temporaryPassword); load(); } else alert(r.json.error || 'Failed'); });
+    } else if (b.dataset.act) {
+      PH.api('PUT', '/api/team/' + b.dataset.act + '/active', { active: b.dataset.on === '1' }).then(function(){ load(); });
+    }
+  });
+  $('nAdd').addEventListener('click', function(){
+    PH.api('POST', '/api/team', { username: $('nUser').value, displayName: $('nName').value, email: $('nEmail').value }).then(function(r){
+      if (r.status === 201) { PH.say($('nMsg'), '', true); showSecret('Temporary password for ' + r.json.username, r.json.temporaryPassword); $('nUser').value = $('nName').value = $('nEmail').value = ''; load(); }
+      else PH.say($('nMsg'), r.json.error || 'Could not add', false);
+    });
+  });
+  PH.boot(function(user){
+    me = user;
+    if (user.role !== 'partner' || !(user.partner && user.partner.isOwner)) { $('subLine').textContent = 'Only a partner owner can manage a team.'; document.querySelectorAll('.card').forEach(function(c){ c.hidden = true; }); return; }
+    load();
+  });
+})();
+</script>
+</body>
+</html>

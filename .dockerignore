@@ -1,0 +1,9 @@
+.git
+**/node_modules
+**/.env
+api/.admin-initial-password
+api/test.js
+serve.js
+tool/pricing-config.json
+docker-compose.yml
+Dockerfile

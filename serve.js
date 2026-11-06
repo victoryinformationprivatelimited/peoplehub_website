@@ -5,6 +5,7 @@ const path = require('path');
 const PORT = process.env.PORT || 4322;
 const ROOT = __dirname;
 const PRICING_CONFIG_PATH = path.join(ROOT, 'tool', 'pricing-config.json');
+const PRICE_LIST_PATH = path.join(ROOT, 'tool', 'price-list.json');
 const MAX_CONFIG_BODY_BYTES = 512 * 1024;
 
 const TYPES = {
@@ -33,9 +34,10 @@ function serveStatic(req, res) {
 // General-login user on this server gets the same admin-configured cost & margin numbers.
 // Not authenticated at this layer — the tool's own login gate decides who is allowed to POST;
 // this endpoint just stores whatever JSON it's given.
-function handlePricingConfig(req, res) {
+function handlePricingConfig(req, res, targetPath) {
+  targetPath = targetPath || PRICING_CONFIG_PATH;
   if (req.method === 'GET') {
-    fs.readFile(PRICING_CONFIG_PATH, (err, data) => {
+    fs.readFile(targetPath, (err, data) => {
       if (err) {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end('{}');
@@ -61,8 +63,8 @@ function handlePricingConfig(req, res) {
       if (tooLarge) return;
       try {
         const parsed = JSON.parse(body);
-        fs.mkdir(path.dirname(PRICING_CONFIG_PATH), { recursive: true }, () => {
-          fs.writeFile(PRICING_CONFIG_PATH, JSON.stringify(parsed), (writeErr) => {
+        fs.mkdir(path.dirname(targetPath), { recursive: true }, () => {
+          fs.writeFile(targetPath, JSON.stringify(parsed), (writeErr) => {
             if (writeErr) {
               res.writeHead(500, { 'Content-Type': 'application/json' });
               res.end(JSON.stringify({ ok: false, error: 'write failed' }));
@@ -88,6 +90,10 @@ http.createServer((req, res) => {
   const urlPath = req.url.split('?')[0];
   if (urlPath === '/api/pricing-config') {
     handlePricingConfig(req, res);
+    return;
+  }
+  if (urlPath === '/api/price-list') {
+    handlePricingConfig(req, res, PRICE_LIST_PATH);
     return;
   }
   serveStatic(req, res);

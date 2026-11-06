@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Follow-ups</title>
+<style>
+  .tabs { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; align-items:center; }
+  .chip { border:1.5px solid var(--border); background:var(--surface); border-radius:99px; padding:6px 14px; font-weight:650; font-size:13px; cursor:pointer; color:var(--muted); }
+  .chip b { margin-left:6px; background:var(--s3); border-radius:99px; padding:0 8px; font-size:12px; color:var(--text); } .chip.on { background:var(--ink); border-color:var(--ink); color:#fff; } .chip.on b { background:rgba(255,255,255,.18); color:#fff; }
+  .chip.red b { background:var(--bad-bg); color:var(--bad-fg); }
+  .row { display:grid; grid-template-columns:28px 1fr auto auto; gap:14px; align-items:center; padding:13px 4px; border-top:1px solid var(--border); }
+  .row:first-child { border-top:none; } .row b { font-weight:650; } .row small { color:var(--muted); display:block; }
+  .row.done b { text-decoration:line-through; color:var(--muted); }
+  .ty { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:var(--accent-d); }
+  .due { font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:99px; background:var(--neu-bg); color:var(--neu-fg); white-space:nowrap; } .due.over { background:var(--bad-bg); color:var(--bad-fg); } .due.now { background:var(--warn-bg); color:var(--warn-fg); }
+  .row input[type=date] { width:auto; padding:5px 8px; font-size:12.5px; }
+  .empty { text-align:center; padding:46px 20px; color:var(--muted); }
+  .add { display:grid; grid-template-columns:1fr 150px 150px auto; gap:10px; } @media (max-width:760px) { .add { grid-template-columns:1fr; } .row { grid-template-columns:28px 1fr; } .row .acts { grid-column:2; } }
+  a.ln { color:inherit; text-decoration:none; } a.ln:hover { text-decoration:underline; }
+</style>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem("ph-theme")||"dark"}catch(e){}</script>
+<link rel="stylesheet" href="ui.css">
+</head>
+<body>
+<div id="gate"><div class="box">
+  <h2>Follow-ups</h2><div class="hint">Sign in with your PeopleHub login.</div>
+  <input type="text" id="gUser" placeholder="Username" autocomplete="username">
+  <input type="password" id="gPass" placeholder="Password" autocomplete="current-password">
+  <div class="err" id="gErr"></div><button class="primary" id="gGo">Log in</button>
+</div></div>
+
+<div class="wrap">
+  <div class="top"><h1>Follow-ups</h1></div>
+  <div class="sub">What needs doing, in date order. You also get one email each morning if something is due.</div>
+
+  <div class="card">
+    <div class="add"><input type="text" id="aTitle" maxlength="200" placeholder="Add a follow-up, e.g. Call Nimal about the quote"><select id="aType"><option value="call">Call</option><option value="email">Email</option><option value="meeting">Meeting</option><option value="whatsapp">WhatsApp</option><option value="follow_up" selected>Follow up</option><option value="other">Other</option></select><input type="date" id="aDate"><button class="primary" id="aAdd">Add</button></div>
+    <span class="msg" id="aMsg"></span>
+  </div>
+
+  <div class="tabs" id="tabs"></div>
+  <div class="card" id="list"></div>
+</div>
+
+<script src="shell.js"></script>
+<script src="app.js"></script>
+<script>
+(function(){
+  var $ = PH.$, esc = PH.esc, me = null, scope = 'open', who = 'me', counts = {};
+  var SC = [['overdue', 'Overdue', 'red'], ['today', 'Today'], ['upcoming', 'Upcoming'], ['open', 'All open'], ['done', 'Done']];
+  function today(){ return new Date().toLocaleDateString('en-CA'); }
+  function dueChip(d){ var s = String(d).slice(0, 10), t = today(); return '<span class="due ' + (s < t ? 'over' : s === t ? 'now' : '') + '">' + (s < t ? 'Overdue · ' : '') + (s === t ? 'Today' : new Date(s + 'T00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })) + '</span>'; }
+  function canAll(){ return me && (me.role !== 'partner' || (me.partner && me.partner.isOwner)); }
+  function fetchScope(sc){ return PH.api('GET', '/api/tasks?scope=' + sc + '&who=' + who); }
+  function tabs(){
+    $('tabs').innerHTML = SC.map(function(s){ return '<button class="chip ' + (scope === s[0] ? 'on ' : '') + (s[2] || '') + '" data-s="' + s[0] + '">' + s[1] + (counts[s[0]] != null && s[0] !== 'done' ? '<b>' + counts[s[0]] + '</b>' : '') + '</button>'; }).join('') +
+      (canAll() ? '<label style="margin:0 0 0 auto;display:flex;gap:7px;align-items:center;font-weight:600"><input type="checkbox" id="whoAll"' + (who === 'all' ? ' checked' : '') + '> Everyone’s</label>' : '');
+  }
+  function load(){
+    Promise.all(['overdue', 'today', 'upcoming', 'open'].map(fetchScope)).then(function(rs){
+      ['overdue', 'today', 'upcoming', 'open'].forEach(function(k, i){ counts[k] = (rs[i].json || []).length; });
+      tabs();
+    });
+    fetchScope(scope).then(function(r){
+      var rows = r.json || [];
+      if (!rows.length) { $('list').innerHTML = '<div class="empty">' + (scope === 'done' ? 'Nothing completed in the last 30 days.' : scope === 'overdue' ? 'Nothing overdue. Nice work.' : 'Nothing here. Add a follow-up above.') + '</div>'; return; }
+      $('list').innerHTML = rows.map(function(t){
+        var link = t.lead_id ? '<a class="ln" href="lead.html?id=' + t.lead_id + '">' + esc(t.lead_name) + '</a>' : t.proposal_id ? '<a class="ln" href="proposal.html?open=' + t.proposal_id + '">' + esc(t.proposal_ref) + '</a>' : esc(t.customer_name || '');
+        return '<div class="row ' + (t.done_at ? 'done' : '') + '"><input type="checkbox" data-done="' + t.id + '"' + (t.done_at ? ' checked' : '') + '><div><b>' + esc(t.title) + '</b><small><span class="ty">' + esc(t.type.replace('_', ' ')) + '</span> · ' + link + (who === 'all' ? ' · ' + esc(t.assignee) : '') + '</small></div>' +
+          '<div>' + (t.done_at ? '<span class="hint">done</span>' : dueChip(t.due_date)) + '</div><div class="acts">' + (t.done_at ? '' : '<input type="date" data-move="' + t.id + '" value="' + String(t.due_date).slice(0, 10) + '" title="Reschedule"> ') + '<button class="link danger" data-del="' + t.id + '" title="Delete">✕</button></div></div>';
+      }).join('');
+    });
+  }
+  $('tabs').addEventListener('click', function(e){ var b = e.target.closest('[data-s]'); if (b) { scope = b.dataset.s; load(); } });
+  $('tabs').addEventListener('change', function(e){ if (e.target.id === 'whoAll') { who = e.target.checked ? 'all' : 'me'; load(); } });
+  $('list').addEventListener('change', function(e){
+    if (e.target.dataset.done) PH.api('PUT', '/api/tasks/' + e.target.dataset.done, { done: e.target.checked }).then(function(){ load(); if (window.PHShell && PHShell.refreshBadge) PHShell.refreshBadge(); });
+    if (e.target.dataset.move && e.target.value) PH.api('PUT', '/api/tasks/' + e.target.dataset.move, { due_date: e.target.value }).then(function(){ load(); if (window.PHShell && PHShell.refreshBadge) PHShell.refreshBadge(); });
+  });
+  $('list').addEventListener('click', function(e){
+    var b = e.target.closest('[data-del]'); if (!b || !confirm('Delete this follow-up?')) return;
+    PH.api('DELETE', '/api/tasks/' + b.dataset.del).then(function(r){ if (r.status !== 200) alert(r.json.error || 'Could not delete'); load(); if (window.PHShell && PHShell.refreshBadge) PHShell.refreshBadge(); });
+  });
+  $('aAdd').addEventListener('click', function(){
+    PH.api('POST', '/api/tasks', { title: $('aTitle').value, type: $('aType').value, due_date: $('aDate').value }).then(function(r){
+      if (r.status === 201) { $('aTitle').value = ''; PH.say($('aMsg'), '', true); load(); if (window.PHShell && PHShell.refreshBadge) PHShell.refreshBadge(); } else PH.say($('aMsg'), r.json.error || 'Could not add', false);
+    });
+  });
+  $('aTitle').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('aAdd').click(); });
+  PH.boot(function(user){ me = user; $('aDate').value = today(); scope = 'today'; load(); });
+})();
+</script>
+</body>
+</html>

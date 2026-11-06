@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Presentations</title>
+<style>
+  .decks { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:16px; }
+  .deck { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; display:flex; flex-direction:column; }
+  .deck .art { height:120px; background:radial-gradient(120% 140% at 0% 0%, #1a8f68, transparent 60%), linear-gradient(135deg,var(--ink),var(--hero-end)); color:#fff; padding:16px 18px; display:flex; flex-direction:column; justify-content:flex-end; }
+  .deck .art small { color:var(--accent2); font-size:11px; letter-spacing:.09em; text-transform:uppercase; font-weight:700; } .deck .art b { font-size:20px; letter-spacing:-.01em; }
+  .deck .body { padding:16px 18px 18px; display:flex; flex-direction:column; gap:10px; flex:1; }
+  .deck p { margin:0; color:var(--text); font-size:13.5px; } .deck .best { color:var(--muted); font-size:12.5px; }
+  .deck .foot { margin-top:auto; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .vis { display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:600; margin:0; color:var(--muted); }
+  .recent .r { display:flex; gap:12px; padding:9px 0; border-top:1px solid var(--border); align-items:baseline; flex-wrap:wrap; } .recent .r:first-of-type { border-top:none; } .recent small { color:var(--muted); }
+  dialog { border:none; border-radius:18px; padding:26px; width:min(660px,94vw); max-height:92vh; overflow:auto; box-shadow:0 24px 70px rgba(0,0,0,.35); } dialog::backdrop { background:rgba(10,20,17,.55); }
+  .sec { border-top:1px solid var(--border); margin-top:14px; padding-top:12px; } .sec > summary { cursor:pointer; font-weight:700; list-style:none; display:flex; justify-content:space-between; align-items:center; } .sec > summary::-webkit-details-marker { display:none; } .sec > summary::after { content:"+"; color:var(--muted); font-weight:700; font-size:18px; } .sec[open] > summary::after { content:"–"; }
+  .pains { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:6px 14px; margin-top:10px; } .pains label { display:flex; gap:8px; align-items:flex-start; font-weight:500; color:var(--text); font-size:13.5px; margin:0; cursor:pointer; }
+  .notice { background:var(--warn); border:1px solid var(--warn-bd); border-radius:12px; padding:14px 18px; margin-bottom:16px; font-weight:600; }
+  .tip { background:var(--soft); border-radius:12px; padding:12px 16px; color:var(--accent-d); font-weight:600; margin-bottom:16px; font-size:13.5px; }
+</style>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem("ph-theme")||"dark"}catch(e){}</script>
+<link rel="stylesheet" href="ui.css">
+</head>
+<body>
+<div id="gate"><div class="box">
+  <h2>Presentations</h2><div class="hint">Sign in with your PeopleHub login.</div>
+  <input type="text" id="gUser" placeholder="Username" autocomplete="username">
+  <input type="password" id="gPass" placeholder="Password" autocomplete="current-password">
+  <div class="err" id="gErr"></div><button class="primary" id="gGo">Log in</button>
+</div></div>
+
+<div class="wrap">
+  <div class="top"><h1>Presentations</h1></div>
+  <div class="sub">Launch the PeopleHub sales presentation, set up for your client in a few clicks. Your company details appear as the presenter.</div>
+  <div class="notice" id="missing" hidden>The presentation has not been installed on this server yet. An administrator can install it with <code>node scripts/sync-deck.js</code>.</div>
+  <div class="tip">Press <b>F</b> for full screen, <b>N</b> for speaker notes, <b>G</b> for the slide grid and <b>E</b> to save a PDF leave-behind.</div>
+  <div class="decks" id="decks"></div>
+  <div class="card recent" style="margin-top:20px" id="recentCard" hidden><h2>Recently presented</h2><div id="recent" style="margin-top:6px"></div></div>
+</div>
+
+<dialog id="dlg">
+  <h2 id="dTitle">Launch</h2>
+  <div class="hint" id="dSub"></div>
+  <div class="grid">
+    <div style="grid-column:1/-1"><label>Client name</label><input type="text" id="dClient" maxlength="160" placeholder="Appears on the opening and closing slides"></div>
+    <div><label>Country</label><select id="dCountry"></select></div>
+    <div><label>Industry</label><select id="dIndustry"></select></div>
+    <div><label>Number of employees</label><input type="number" id="dHead" min="0" placeholder="Used in the value estimator"></div>
+    <div><label>Size of the HR team</label><input type="number" id="dHr" min="0" placeholder="Optional"></div>
+  </div>
+  <details class="sec" open><summary>The meeting</summary>
+    <div class="grid">
+      <div><label>Length</label><select id="dAgenda"><option value="">Whole presentation</option></select><div class="hint">A shorter meeting keeps the must-have slides and adds the modules that matter most to this client.</div></div>
+      <div id="dNavBox"><label>Navigation screen</label><select id="dNav"></select><div class="hint">How the client explores the modules.</div></div>
+      <div><label>Appearance</label><select id="dTheme"><option value="">Use my last choice</option><option value="dark">Dark</option><option value="light">Light</option></select></div>
+    </div>
+  </details>
+  <details class="sec"><summary>What is hurting the client today <span class="hint" style="margin:0 auto 0 10px;font-weight:500" id="dPainCount"></span></summary>
+    <div class="hint" style="margin-top:6px">Tick what they told you. The presentation puts the matching modules first.</div>
+    <div class="pains" id="dPains"></div>
+    <div style="margin-top:10px"><label>Something else (in their words)</label><input type="text" id="dCustom" maxlength="120"></div>
+  </details>
+  <div class="hint" style="margin-top:12px">Presented by <b id="dWho"></b>. Want every option, including the logo, the hosted link and a hand-picked slide order? Open the full settings screen.</div>
+  <div style="display:flex;gap:10px;justify-content:flex-end;align-items:center;flex-wrap:wrap;margin-top:12px"><span class="msg" id="dMsg"></span><button id="dCancel">Cancel</button><button id="dFull">Open full settings screen</button><button class="primary" id="dGo">Start presentation</button></div>
+</dialog>
+
+<script src="shell.js"></script>
+<script src="app.js"></script>
+<script>
+(function(){
+  var $ = PH.$, esc = PH.esc, me = null, data = null, deck = null;
+  var params = new URLSearchParams(location.search), leadId = params.get('lead');
+  function ago(d){ var s = (Date.now() - new Date(d)) / 1000; if (s < 90) return 'just now'; if (s < 3600) return Math.round(s / 60) + ' min ago'; if (s < 86400) return Math.round(s / 3600) + ' h ago'; return Math.round(s / 86400) + ' d ago'; }
+  function load(){
+    PH.api('GET', '/api/presentations').then(function(r){
+      data = r.json; $('missing').hidden = data.installed;
+      $('decks').innerHTML = data.decks.map(function(d){
+        return '<div class="deck"><div class="art"><small>PeopleHub HRIS</small><b>' + esc(d.name) + '</b></div><div class="body"><p>' + esc(d.tagline) + '</p><div class="best">Best for: ' + esc(d.best_for) + '</div>' +
+          '<div class="foot"><button class="primary" data-launch="' + esc(d.id) + '"' + (data.installed ? '' : ' disabled') + '>Launch</button>' +
+          (me.role === 'admin' ? '<label class="vis"><input type="checkbox" data-vis="' + esc(d.id) + '"' + (d.partner_visible ? ' checked' : '') + '> Partners can use</label>' : (me.role === 'staff' && !d.partner_visible ? '<span class="hint" style="margin:0">Victory only</span>' : '')) + '</div></div></div>';
+      }).join('');
+      $('recentCard').hidden = !data.recent.length;
+      $('recent').innerHTML = data.recent.map(function(x){ return '<div class="r"><b>' + esc(x.client || 'No client name') + '</b><small>' + esc(x.deck_name || x.deck_id) + ' · ' + esc(x.by_user || '') + ' · ' + ago(x.created_at) + '</small></div>'; }).join('');
+    });
+  }
+  $('decks').addEventListener('click', function(e){
+    var b = e.target.closest('[data-launch]'); if (!b) return;
+    deck = data.decks.filter(function(d){ return d.id === b.dataset.launch; })[0];
+    $('dTitle').textContent = deck.name; $('dSub').textContent = deck.tagline; $('dMsg').textContent = '';
+    $('dCountry').innerHTML = data.countries.map(function(c){ return '<option value="' + c[0] + '">' + esc(c[1]) + '</option>'; }).join('');
+    $('dIndustry').innerHTML = data.industries.map(function(c){ return '<option value="' + c[0] + '">' + esc(c[1]) + '</option>'; }).join('');
+    try { var s = JSON.parse(localStorage.getItem('ph_launch') || '{}'); if (s.country) $('dCountry').value = s.country; if (s.industry) $('dIndustry').value = s.industry; } catch (x) {}
+    $('dClient').value = params.get('client') || ''; $('dHead').value = params.get('headcount') || ''; $('dHr').value = ''; $('dCustom').value = '';
+    $('dAgenda').innerHTML = '<option value="">Whole presentation</option>' + data.agendas.map(function(m){ return '<option value="' + m + '">' + m + ' minutes</option>'; }).join('');
+    var navs = data.navs[deck.id] || []; $('dNavBox').hidden = !navs.length;
+    $('dNav').innerHTML = '<option value="">Deck default</option>' + navs.map(function(n){ return '<option value="' + n[0] + '">' + esc(n[1]) + '</option>'; }).join('');
+    $('dTheme').value = '';
+    $('dPains').innerHTML = data.pains.map(function(p){ return '<label><input type="checkbox" value="' + p[0] + '"> ' + esc(p[1]) + '</label>'; }).join('');
+    $('dPainCount').textContent = '';
+    $('dWho').textContent = me.role === 'partner' && me.partner ? (me.displayName || me.username) + ', ' + me.partner.company : 'Victory Information';
+    $('dlg').showModal(); $('dClient').focus();
+  });
+  $('decks').addEventListener('change', function(e){
+    if (!e.target.dataset.vis) return;
+    PH.api('PUT', '/api/presentations/decks/' + e.target.dataset.vis, { partner_visible: e.target.checked }).then(load);
+  });
+  $('dCancel').addEventListener('click', function(){ $('dlg').close(); });
+  $('dPains').addEventListener('change', function(){ var n = document.querySelectorAll('#dPains input:checked').length; $('dPainCount').textContent = n ? n + ' selected' : ''; });
+  function launch(mode){
+    var w = window.open('', '_blank'); // opened now so the browser does not block it
+    var pains = [].map.call(document.querySelectorAll('#dPains input:checked'), function(x){ return x.value; });
+    var body = { mode: mode, deck: deck.id, client: $('dClient').value, country: $('dCountry').value, industry: $('dIndustry').value, headcount: $('dHead').value, hrTeam: $('dHr').value, agenda: $('dAgenda').value, nav: $('dNav').value, theme: $('dTheme').value, pains: pains, customPain: $('dCustom').value, lead_id: leadId ? +leadId : undefined };
+    try { localStorage.setItem('ph_launch', JSON.stringify({ country: body.country, industry: body.industry })); } catch (x) {}
+    PH.api('POST', '/api/presentations/launch', body).then(function(r){
+      if (r.status === 200) { if (w) w.location = r.json.url; else location.href = r.json.url; $('dlg').close(); load(); }
+      else { if (w) w.close(); PH.say($('dMsg'), r.json.error || 'Could not start', false); }
+    });
+  }
+  $('dGo').addEventListener('click', function(){ launch('show'); });
+  $('dFull').addEventListener('click', function(){ launch('settings'); });
+  PH.boot(function(user){ me = user; load(); });
+})();
+</script>
+</body>
+</html>

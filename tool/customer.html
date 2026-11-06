@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Customer</title>
+<style>
+  .head { display:flex; gap:18px; align-items:center; flex-wrap:wrap; margin-bottom:20px; }
+  .head .av { width:64px; height:64px; border-radius:18px; background:linear-gradient(135deg,var(--accent2),var(--accent-d)); color:#fff; display:grid; place-items:center; font-weight:800; font-size:22px; flex:none; }
+  .head h1 { font-size:26px; } .head .sub { margin:4px 0 0; } .head .sp { flex:1; }
+  .tagp { font-size:11.5px; font-weight:700; background:var(--soft); color:var(--accent-d); padding:2px 10px; border-radius:99px; } .tagp.grey { background:var(--neu-bg); color:var(--muted); }
+  .cols { display:grid; grid-template-columns:minmax(0,1fr) 400px; gap:20px; align-items:start; } @media (max-width:1050px) { .cols { grid-template-columns:1fr; } }
+  .kv { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; }
+  .kv div { background:var(--s2); border-radius:12px; padding:11px 14px; } .kv small { display:block; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.07em; font-weight:700; } .kv b { font-size:14.5px; word-break:break-word; font-weight:650; }
+  .ct { display:flex; gap:14px; align-items:center; padding:12px 0; border-top:1px solid var(--border); flex-wrap:wrap; } .ct:first-of-type { border-top:none; }
+  .ct .av2 { width:40px; height:40px; border-radius:50%; background:var(--soft); color:var(--accent-d); display:grid; place-items:center; font-weight:800; flex:none; }
+  .ct .m { flex:1; min-width:180px; } .ct b { display:block; } .ct small { color:var(--muted); display:block; font-size:12.5px; } .ct a { color:inherit; }
+  .li { display:flex; gap:12px; align-items:center; padding:10px 0; border-top:1px solid var(--border); } .li:first-of-type { border-top:none; } .li .m { flex:1; min-width:0; } .li a { color:inherit; text-decoration:none; } .li a:hover b { text-decoration:underline; } .li small { color:var(--muted); display:block; font-size:12.5px; }
+  .st { display:inline-block; padding:3px 11px; border-radius:99px; font-size:12px; font-weight:700; text-transform:capitalize; background:var(--neu-bg); color:var(--neu-fg); }
+  .st.sent, .st.viewed { background:var(--info-bg); color:var(--info-fg); } .st.negotiating { background:var(--warn-bg); color:var(--warn-fg); } .st.accepted { background:var(--ok-bg); color:var(--ok-fg); } .st.lost { background:var(--bad-bg); color:var(--bad-fg); } .st.superseded { background:var(--neu-bg); color:var(--muted); }
+  .tl { position:relative; padding-left:22px; } .tl::before { content:""; position:absolute; left:6px; top:6px; bottom:6px; width:2px; background:var(--border); }
+  .ev { position:relative; padding:0 0 14px; font-size:13.5px; } .ev::before { content:""; position:absolute; left:-21px; top:5px; width:10px; height:10px; border-radius:50%; background:var(--surface); border:2.5px solid var(--accent); } .ev.p::before { border-color:#2a78d6; } .ev small { color:var(--muted); display:block; font-size:12px; }
+  .ty { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:var(--accent-d); margin-right:6px; }
+  dialog { border:none; border-radius:18px; padding:26px; width:min(560px,94vw); box-shadow:0 24px 70px rgba(0,0,0,.35); } dialog::backdrop { background:rgba(10,20,17,.55); }
+  .small-btn { padding:5px 11px; font-size:12.5px; }
+</style>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem("ph-theme")||"dark"}catch(e){}</script>
+<link rel="stylesheet" href="ui.css">
+</head>
+<body>
+<div id="gate"><div class="box">
+  <h2>Customer</h2><div class="hint">Sign in with your PeopleHub login.</div>
+  <input type="text" id="gUser" placeholder="Username" autocomplete="username">
+  <input type="password" id="gPass" placeholder="Password" autocomplete="current-password">
+  <div class="err" id="gErr"></div><button class="primary" id="gGo">Log in</button>
+</div></div>
+
+<div class="wrap">
+  <div class="top"><a href="customers.html" style="display:inline;font-weight:650">← All customers</a></div>
+  <div class="head"><div class="av" id="hAv"></div><div style="min-width:0"><h1 id="hName"></h1><div class="sub" id="hSub"></div></div><div class="sp"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button id="editBtn">Edit details</button><button id="taskBtn">+ Follow-up</button><a id="propBtn" href="#" style="text-decoration:none"><button class="primary">+ New proposal</button></a></div></div>
+
+  <div class="cols">
+    <div>
+      <div class="card"><h2>About</h2><div class="kv" id="kv" style="margin-top:10px"></div><div id="notes" class="hint" style="margin-top:12px;white-space:pre-wrap"></div></div>
+      <div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><h2>People</h2><button id="addContact">+ Add contact</button></div><div id="contacts" style="margin-top:6px"></div></div>
+      <div class="card"><h2>Proposals</h2><div id="props" style="margin-top:6px"></div></div>
+    </div>
+    <div><div class="card"><h2>Timeline</h2><div class="hint" style="margin-bottom:10px">Calls, meetings, proposals and follow-ups, newest first.</div><div class="tl" id="timeline"></div></div></div>
+  </div>
+</div>
+
+<dialog id="dEdit"><h2>Edit customer</h2><div class="grid">
+  <div style="grid-column:1/-1"><label>Organisation name *</label><input type="text" id="eName" maxlength="160"></div>
+  <div><label>Industry</label><input type="text" id="eInd" maxlength="120"></div><div><label>Sites / locations</label><input type="text" id="eSites" maxlength="120"></div>
+  <div><label>System being replaced</label><input type="text" id="eSys" maxlength="160"></div><div><label>Website</label><input type="text" id="eWeb" maxlength="160"></div>
+  <div style="grid-column:1/-1"><label>Address</label><input type="text" id="eAddr" maxlength="300"></div>
+  <div style="grid-column:1/-1"><label>Notes</label><textarea id="eNotes" maxlength="4000"></textarea></div>
+  <label style="display:flex;gap:8px;align-items:center;margin:0;grid-column:1/-1;font-weight:600"><input type="checkbox" id="eActive"> Active customer</label></div>
+  <div style="display:flex;gap:10px;justify-content:flex-end;align-items:center"><span class="msg" id="eMsg"></span><button id="eCancel">Cancel</button><button class="primary" id="eSave">Save</button></div></dialog>
+
+<dialog id="dCon"><h2 id="cTitle">Add a contact</h2><div class="grid">
+  <div><label>Name *</label><input type="text" id="kName" maxlength="120"></div><div><label>Job title</label><input type="text" id="kTitle" maxlength="120"></div>
+  <div><label>Email</label><input type="email" id="kEmail" maxlength="160"></div><div><label>Phone</label><input type="text" id="kPhone" maxlength="40"></div>
+  <div><label>Role in the decision</label><select id="kRole"><option value="">—</option><option>Sponsor</option><option>HR</option><option>Finance</option><option>IT</option><option>Other</option></select></div>
+  <label style="display:flex;gap:8px;align-items:center;margin:0;font-weight:600;align-self:end"><input type="checkbox" id="kPrimary"> Main contact for proposals</label></div>
+  <div style="display:flex;gap:10px;justify-content:flex-end;align-items:center"><span class="msg" id="kMsg"></span><button id="kCancel">Cancel</button><button class="primary" id="kSave">Save</button></div></dialog>
+
+<dialog id="dTask"><h2>Add a follow-up</h2>
+  <label>What needs to be done?</label><input type="text" id="tTitle" maxlength="200" placeholder="e.g. Call to confirm the demo date">
+  <div class="grid"><div><label>Type</label><select id="tType"><option value="call">Call</option><option value="email">Email</option><option value="meeting">Meeting</option><option value="whatsapp">WhatsApp</option><option value="follow_up" selected>Follow up</option></select></div><div><label>Due date</label><input type="date" id="tDate"></div></div>
+  <div style="display:flex;gap:10px;justify-content:flex-end;align-items:center"><span class="msg" id="tMsg"></span><button id="tCancel">Cancel</button><button class="primary" id="tSave">Add</button></div></dialog>
+
+<script src="shell.js"></script>
+<script src="app.js"></script>
+<script>
+(function(){
+  var $ = PH.$, esc = PH.esc, money = PH.money;
+  var id = (location.search.match(/id=(\d+)/) || [])[1], c = null, editingContact = null;
+  function ini(n){ return String(n || '?').trim().split(/\s+/).slice(0, 2).map(function(w){ return w.charAt(0); }).join('').toUpperCase(); }
+  function fmt(d){ return new Date(d).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+
+  function render(){
+    document.title = c.name + ' · Customer';
+    $('hAv').textContent = ini(c.name); $('hName').textContent = c.name;
+    $('hSub').innerHTML = esc(c.industry || 'Industry not set') + (c.sites ? ' · ' + esc(c.sites) : '') + ' ' + (c.active ? '' : '<span class="tagp grey">Inactive</span> ') + (c.partner_name ? '<span class="tagp">' + esc(c.partner_name) + '</span> ' : '') + (c.lead ? '<a href="lead.html?id=' + c.lead.id + '" class="tagp" style="text-decoration:none">Lead · ' + esc(c.lead.stage) + '</a>' : '');
+    $('propBtn').href = 'proposal.html?customer=' + c.id;
+    $('kv').innerHTML = [['Address', c.address], ['Website', c.website ? '<a href="' + esc(/^https?:/.test(c.website) ? c.website : 'https://' + c.website) + '" target="_blank" rel="noopener">' + esc(c.website) + '</a>' : ''], ['System being replaced', c.current_system], ['Customer since', new Date(c.created_at).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })]].map(function(x){ return '<div><small>' + x[0] + '</small><b>' + (x[1] ? (x[0] === 'Website' ? x[1] : esc(x[1])) : '—') + '</b></div>'; }).join('');
+    $('notes').textContent = c.notes || '';
+    $('contacts').innerHTML = c.contacts.length ? c.contacts.map(function(k){
+      return '<div class="ct"><div class="av2">' + esc(ini(k.name)) + '</div><div class="m"><b>' + esc(k.name) + (k.is_primary ? ' <span class="tagp">Main contact</span>' : '') + '</b><small>' + esc([k.title, k.role].filter(Boolean).join(' · ') || 'No title') + '</small><small>' + (k.email ? '<a href="mailto:' + esc(k.email) + '">' + esc(k.email) + '</a>' : '') + (k.email && k.phone ? ' · ' : '') + esc(k.phone || '') + '</small></div><div><button class="small-btn" data-edit="' + k.id + '">Edit</button> ' + (k.is_primary ? '' : '<button class="small-btn" data-main="' + k.id + '">Make main</button> ') + '<button class="link danger small-btn" data-del="' + k.id + '">Remove</button></div></div>';
+    }).join('') : '<div class="hint" style="padding:10px 0">No contacts yet. Add the person who will receive the proposal.</div>';
+    $('props').innerHTML = c.proposals.length ? c.proposals.map(function(p){
+      return '<div class="li"><div class="m"><a href="proposal.html?open=' + p.id + '"><b>' + esc(p.ref_no) + '</b></a><small>' + new Date(p.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) + (p.monthly ? ' · ' + money(p.monthly) + ' a month' : '') + '</small></div><span class="st ' + esc(p.status) + '">' + esc(p.status) + '</span></div>';
+    }).join('') : '<div class="hint" style="padding:10px 0">No proposals yet. Press <b>+ New proposal</b> to price this customer.</div>';
+  }
+  function load(){ return PH.api('GET', '/api/customers/' + id).then(function(r){ if (r.status !== 200) { $('hName').textContent = 'Customer not found'; return; } c = r.json; render(); }); }
+  function timeline(){
+    PH.api('GET', '/api/customers/' + id + '/timeline').then(function(r){
+      var rows = r.json || [];
+      $('timeline').innerHTML = rows.length ? rows.map(function(e){
+        var label = e.kind === 'proposal' ? 'Proposal' + (e.ref ? ' ' + e.ref : '') : e.kind === 'task' ? 'Follow-up' : (e.type === 'stage' ? 'Update' : e.type);
+        return '<div class="ev ' + (e.kind === 'proposal' ? 'p' : '') + '"><span class="ty">' + esc(label) + '</span>' + esc(e.text || '') + '<small>' + esc(e.by_user || '') + (e.by_user ? ' · ' : '') + fmt(e.at) + '</small></div>';
+      }).join('') : '<div class="hint">Nothing yet. Calls, meetings and proposals will build up here.</div>';
+    });
+  }
+
+  // contacts
+  function openContact(k){
+    editingContact = k || null; $('cTitle').textContent = k ? 'Edit contact' : 'Add a contact'; $('kMsg').textContent = '';
+    $('kName').value = k ? k.name : ''; $('kTitle').value = k ? k.title || '' : ''; $('kEmail').value = k ? k.email || '' : ''; $('kPhone').value = k ? k.phone || '' : ''; $('kRole').value = k ? k.role || '' : ''; $('kPrimary').checked = k ? k.is_primary : !c.contacts.length;
+    $('dCon').showModal(); $('kName').focus();
+  }
+  $('addContact').addEventListener('click', function(){ openContact(null); });
+  $('contacts').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b) return;
+    var k = function(i){ return c.contacts.filter(function(x){ return x.id === +i; })[0]; };
+    if (b.dataset.edit) openContact(k(b.dataset.edit));
+    if (b.dataset.main) { var m = k(b.dataset.main); PH.api('PUT', '/api/contacts/' + m.id, { name: m.name, title: m.title, email: m.email, phone: m.phone, role: m.role, is_primary: true }).then(load); }
+    if (b.dataset.del && confirm('Remove ' + k(b.dataset.del).name + ' from this customer?')) PH.api('DELETE', '/api/contacts/' + b.dataset.del).then(load);
+  });
+  $('kCancel').addEventListener('click', function(){ $('dCon').close(); });
+  $('kSave').addEventListener('click', function(){
+    var body = { name: $('kName').value, title: $('kTitle').value, email: $('kEmail').value, phone: $('kPhone').value, role: $('kRole').value, is_primary: $('kPrimary').checked };
+    var req = editingContact ? PH.api('PUT', '/api/contacts/' + editingContact.id, body) : PH.api('POST', '/api/customers/' + id + '/contacts', body);
+    req.then(function(r){ if (r.status === 200 || r.status === 201) { $('dCon').close(); load(); } else PH.say($('kMsg'), r.json.error || 'Could not save', false); });
+  });
+
+  // edit customer
+  $('editBtn').addEventListener('click', function(){
+    $('eName').value = c.name; $('eInd').value = c.industry || ''; $('eSites').value = c.sites || ''; $('eSys').value = c.current_system || ''; $('eWeb').value = c.website || ''; $('eAddr').value = c.address || ''; $('eNotes').value = c.notes || ''; $('eActive').checked = c.active; $('eMsg').textContent = '';
+    $('dEdit').showModal();
+  });
+  $('eCancel').addEventListener('click', function(){ $('dEdit').close(); });
+  $('eSave').addEventListener('click', function(){
+    PH.api('PUT', '/api/customers/' + id, { name: $('eName').value, industry: $('eInd').value, sites: $('eSites').value, current_system: $('eSys').value, website: $('eWeb').value, address: $('eAddr').value, notes: $('eNotes').value, active: $('eActive').checked }).then(function(r){
+      if (r.status === 200) { $('dEdit').close(); load(); } else PH.say($('eMsg'), r.json.error || 'Could not save', false);
+    });
+  });
+
+  // follow-up
+  $('taskBtn').addEventListener('click', function(){ $('tTitle').value = ''; $('tDate').value = new Date(Date.now() + 2 * 86400000).toLocaleDateString('en-CA'); $('tMsg').textContent = ''; $('dTask').showModal(); $('tTitle').focus(); });
+  $('tCancel').addEventListener('click', function(){ $('dTask').close(); });
+  $('tSave').addEventListener('click', function(){
+    PH.api('POST', '/api/tasks', { title: $('tTitle').value, type: $('tType').value, due_date: $('tDate').value, customer_id: +id }).then(function(r){
+      if (r.status === 201) { $('dTask').close(); timeline(); if (window.PHShell && PHShell.refreshBadge) PHShell.refreshBadge(); } else PH.say($('tMsg'), r.json.error || 'Could not save', false);
+    });
+  });
+
+  PH.boot(function(){ if (!id) { $('hName').textContent = 'No customer selected'; return; } load(); timeline(); });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Lead</title>
+<style>
+  .head { display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap; margin-bottom:16px; }
+  .head h1 { font-size:26px; } .head .sub { margin:4px 0 0; }
+  .stages { display:flex; gap:0; margin:0 0 18px; flex-wrap:wrap; }
+  .stg { flex:1; min-width:96px; border:1.5px solid var(--border); background:var(--surface); padding:10px 8px; font-weight:700; color:var(--muted); border-radius:0; text-align:center; }
+  .stg:first-child { border-radius:12px 0 0 12px; } .stg:last-child { border-radius:0 12px 12px 0; } .stg + .stg { margin-left:-1.5px; }
+  .stg.done { background:var(--soft); color:var(--accent-d); } .stg.cur { background:var(--accent); border-color:var(--accent); color:#fff; z-index:1; } .stg.cur.lost { background:var(--bad-fg); border-color:var(--bad-fg); }
+  .cols { display:grid; grid-template-columns:minmax(0,1fr) 380px; gap:20px; align-items:start; } @media (max-width:1000px) { .cols { grid-template-columns:1fr; } }
+  .kv { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; }
+  .kv div { background:var(--s2); border-radius:12px; padding:11px 14px; } .kv small { display:block; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.07em; font-weight:700; } .kv b { font-size:15px; word-break:break-word; }
+  .acts { display:flex; gap:8px; flex-wrap:wrap; margin-top:14px; }
+  .tl { position:relative; padding-left:22px; } .tl::before { content:""; position:absolute; left:6px; top:6px; bottom:6px; width:2px; background:var(--border); }
+  .ev { position:relative; padding:0 0 16px; } .ev::before { content:""; position:absolute; left:-21px; top:5px; width:10px; height:10px; border-radius:50%; background:var(--surface); border:2.5px solid var(--accent); }
+  .ev.stage::before { border-color:var(--muted); } .ev b { font-weight:650; } .ev small { color:var(--muted); display:block; font-size:12px; }
+  .ty { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:var(--accent-d); margin-right:6px; }
+  .trow { display:flex; align-items:center; gap:10px; padding:8px 0; border-top:1px solid var(--border); } .trow:first-of-type { border-top:none; } .trow .sp { flex:1; } .trow.done b { text-decoration:line-through; color:var(--muted); }
+  .due { font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:99px; background:var(--neu-bg); color:var(--neu-fg); white-space:nowrap; } .due.over { background:var(--bad-bg); color:var(--bad-fg); } .due.now { background:var(--warn-bg); color:var(--warn-fg); }
+  .lock { background:var(--soft); border-radius:12px; padding:10px 14px; font-size:13px; margin-bottom:16px; color:var(--accent-d); font-weight:600; }
+  .st { display:inline-block; padding:3px 11px; border-radius:99px; font-size:12px; font-weight:700; text-transform:capitalize; background:var(--neu-bg); color:var(--neu-fg); }
+  .quick { display:flex; gap:6px; flex-wrap:wrap; margin:6px 0 10px; } .quick button { padding:5px 11px; font-size:12.5px; }
+  dialog { border:none; border-radius:18px; padding:24px; width:min(520px,94vw); box-shadow:0 24px 70px rgba(0,0,0,.35); } dialog::backdrop { background:rgba(10,20,17,.55); }
+  [hidden] { display:none !important; }
+</style>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem("ph-theme")||"dark"}catch(e){}</script>
+<link rel="stylesheet" href="ui.css">
+</head>
+<body>
+<div id="gate"><div class="box">
+  <h2>Lead</h2><div class="hint">Sign in with your PeopleHub login.</div>
+  <input type="text" id="gUser" placeholder="Username" autocomplete="username">
+  <input type="password" id="gPass" placeholder="Password" autocomplete="current-password">
+  <div class="err" id="gErr"></div><button class="primary" id="gGo">Log in</button>
+</div></div>
+
+<div class="wrap">
+  <div class="top"><a href="leads.html" style="display:inline;font-weight:650">← All leads</a></div>
+  <div class="head"><div style="flex:1;min-width:240px"><h1 id="hCo"></h1><div class="sub" id="hSub"></div></div><div id="hActs" class="acts" style="margin:0"></div></div>
+  <div class="stages" id="stages"></div>
+  <div class="lock" id="lock" hidden></div>
+
+  <div class="cols">
+    <div>
+      <div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><h2>Details</h2><button id="editBtn">Edit</button></div>
+        <div class="kv" id="kv" style="margin-top:10px"></div><div id="notesBox" class="hint" style="margin-top:12px;white-space:pre-wrap"></div></div>
+      <div class="card" id="propCard"><h2>Proposals</h2><div id="props" class="hint">None yet.</div></div>
+      <div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><h2>Follow-ups</h2><button id="addTask">+ Add follow-up</button></div><div id="tasks" style="margin-top:8px"></div></div>
+    </div>
+    <div>
+      <div class="card"><h2>Log an activity</h2>
+        <div class="seg2" style="display:flex;gap:6px;margin:10px 0;flex-wrap:wrap" id="actTypes"></div>
+        <textarea id="actNote" maxlength="1000" placeholder="What happened? e.g. Spoke to Kamal, wants a demo next week" style="min-height:70px"></textarea>
+        <div style="margin-top:10px"><button class="primary" id="actSave">Save</button><span class="msg" id="actMsg"></span></div></div>
+      <div class="card"><h2>Timeline</h2><div class="tl" id="timeline" style="margin-top:12px"></div></div>
+    </div>
+  </div>
+</div>
+
+<dialog id="dEdit"><h2>Edit lead</h2><div class="grid">
+  <div style="grid-column:1/-1"><label>Company</label><input type="text" id="eCo" maxlength="160"></div>
+  <div><label>Contact name</label><input type="text" id="eName" maxlength="120"></div><div><label>Job title</label><input type="text" id="eTitle" maxlength="120"></div>
+  <div><label>Email</label><input type="email" id="eEmail" maxlength="160"></div><div><label>Phone</label><input type="text" id="ePhone" maxlength="40"></div>
+  <div><label>Employees</label><input type="number" id="eEmp" min="0"></div><div><label>Expected monthly value (USD)</label><input type="number" id="eVal" min="0"></div>
+  <div><label>Industry</label><input type="text" id="eInd" maxlength="120"></div><div><label>Source</label><input type="text" id="eSrc" maxlength="40"></div>
+  <div id="ownBox"><label>Owner</label><select id="eOwn"></select></div>
+  <div style="grid-column:1/-1"><label>Notes</label><textarea id="eNotes" maxlength="4000"></textarea></div></div>
+  <div style="display:flex;gap:10px;justify-content:flex-end;align-items:center"><span class="msg" id="eMsg"></span><button id="eCancel">Cancel</button><button class="primary" id="eSave">Save</button></div></dialog>
+
+<dialog id="dTask"><h2>Add a follow-up</h2>
+  <label>What needs to be done?</label><input type="text" id="tTitle" maxlength="200" placeholder="e.g. Call Kamal about the demo">
+  <div class="grid"><div><label>Type</label><select id="tType"><option value="call">Call</option><option value="email">Email</option><option value="meeting">Meeting</option><option value="whatsapp">WhatsApp</option><option value="follow_up" selected>Follow up</option><option value="other">Other</option></select></div>
+    <div><label>Due date</label><input type="date" id="tDate"></div></div>
+  <div class="quick" id="tQuick"><button data-d="0">Today</button><button data-d="1">Tomorrow</button><button data-d="3">In 3 days</button><button data-d="7">Next week</button><button data-d="14">In 2 weeks</button></div>
+  <div style="display:flex;gap:10px;justify-content:flex-end;align-items:center"><span class="msg" id="tMsg"></span><button id="tCancel">Cancel</button><button class="primary" id="tSave">Add</button></div></dialog>
+
+<script src="shell.js"></script>
+<script src="app.js"></script>
+<script>
+(function(){
+  var $ = PH.$, esc = PH.esc, money = PH.money;
+  var id = (location.search.match(/id=(\d+)/) || [])[1], lead = null, me = null, actType = 'call';
+  var STAGES = [['new', 'New'], ['contacted', 'Contacted'], ['qualified', 'Qualified'], ['proposal', 'Proposal'], ['won', 'Won']];
+  var ACT = [['call', 'Call'], ['meeting', 'Meeting'], ['email', 'Email'], ['whatsapp', 'WhatsApp'], ['note', 'Note']];
+  function today(){ return new Date().toLocaleDateString('en-CA'); }
+  function addDays(n){ var d = new Date(); d.setDate(d.getDate() + n); return d.toLocaleDateString('en-CA'); }
+  function dueChip(d){ var s = String(d).slice(0, 10), t = today(); return '<span class="due ' + (s < t ? 'over' : s === t ? 'now' : '') + '">' + (s === t ? 'Today' : new Date(s + 'T00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })) + '</span>'; }
+  function when(d){ return new Date(d).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); }
+
+  function render(){
+    var l = lead;
+    document.title = l.company_name + ' · Lead';
+    $('hCo').textContent = l.company_name;
+    $('hSub').innerHTML = esc(l.contact_name || 'No contact yet') + (l.contact_title ? ', ' + esc(l.contact_title) : '') + ' · Owner: ' + esc(l.owner_name);
+    var cur = l.stage;
+    $('stages').innerHTML = STAGES.map(function(s, i){
+      var idx = STAGES.map(function(x){ return x[0]; }).indexOf(cur);
+      return '<button class="stg ' + (cur === s[0] ? 'cur' : (idx > i ? 'done' : '')) + '" data-stage="' + s[0] + '">' + s[1] + '</button>';
+    }).join('') + '<button class="stg ' + (cur === 'lost' ? 'cur lost' : '') + '" data-stage="lost">Lost</button>';
+    $('hActs').innerHTML = (cur !== 'lost' ? '<a href="presentations.html?lead=' + l.id + '&client=' + encodeURIComponent(l.company_name) + (l.employees ? '&headcount=' + l.employees : '') + '" style="text-decoration:none"><button>Present</button></a><button class="primary" id="mkProp">' + (l.proposals && l.proposals.length ? 'New proposal' : 'Create proposal') + '</button>' : '');
+    var lock = new Date(l.lock_until);
+    $('lock').hidden = ['lost', 'won'].indexOf(cur) > -1;
+    $('lock').textContent = 'Registered to ' + (l.partner_id ? 'your company' : 'Victory') + ' until ' + lock.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) + '. Every call, meeting or proposal renews it for another 90 days.';
+    $('kv').innerHTML =
+      '<div><small>Email</small><b>' + (l.email ? '<a href="mailto:' + esc(l.email) + '">' + esc(l.email) + '</a>' : '—') + '</b></div>' +
+      '<div><small>Phone</small><b>' + esc(l.phone || '—') + '</b></div>' +
+      '<div><small>Employees</small><b>' + (l.employees ? l.employees.toLocaleString() : '—') + '</b></div>' +
+      '<div><small>Expected monthly</small><b>' + (l.est_value ? money(l.est_value) : '—') + '</b></div>' +
+      '<div><small>Industry</small><b>' + esc(l.industry || '—') + '</b></div><div><small>Source</small><b>' + esc(l.source || '—') + '</b></div>' +
+      (l.stage === 'lost' ? '<div style="grid-column:1/-1"><small>Why lost</small><b>' + esc(l.lost_reason || '') + '</b></div>' : '');
+    $('notesBox').textContent = l.notes || '';
+    $('props').innerHTML = (l.proposals || []).length ? l.proposals.map(function(p){ return '<div class="trow"><a href="proposal.html?open=' + p.id + '"><b>' + esc(p.ref_no) + '</b></a><span class="st">' + esc(p.status) + '</span><span class="sp"></span><span>' + (p.monthly ? money(p.monthly) + '/mo' : '') + '</span></div>'; }).join('') : 'No proposals yet. Use “Create proposal” above to price this lead.';
+    $('tasks').innerHTML = (l.tasks || []).length ? l.tasks.map(function(t){
+      return '<div class="trow ' + (t.done_at ? 'done' : '') + '"><input type="checkbox" data-done="' + t.id + '" ' + (t.done_at ? 'checked' : '') + '><div><b>' + esc(t.title) + '</b><br><small class="hint">' + esc(t.assignee) + '</small></div><span class="sp"></span>' + (t.done_at ? '<span class="hint">done</span>' : dueChip(t.due_date)) + '</div>';
+    }).join('') : '<div class="hint">No follow-ups. Add one so this lead does not go cold.</div>';
+    $('timeline').innerHTML = (l.activities || []).map(function(a){
+      return '<div class="ev ' + (a.type === 'stage' ? 'stage' : '') + '"><b><span class="ty">' + esc(a.type === 'stage' ? 'Update' : a.type) + '</span>' + esc(a.note || '') + '</b><small>' + esc(a.by_user || '') + ' · ' + when(a.created_at) + '</small></div>';
+    }).join('');
+  }
+  function load(){ return PH.api('GET', '/api/leads/' + id).then(function(r){ if (r.status !== 200) { $('hCo').textContent = 'Lead not found'; return; } lead = r.json; render(); }); }
+
+  $('stages').addEventListener('click', function(e){
+    var b = e.target.closest('[data-stage]'); if (!b || b.dataset.stage === lead.stage) return;
+    var body = { stage: b.dataset.stage };
+    if (body.stage === 'lost') { var why = prompt('Why was this lead lost? (price, competitor, no budget, timing, ...)'); if (why === null) return; body.reason = why; }
+    PH.api('PUT', '/api/leads/' + id + '/stage', body).then(function(r){ if (r.status !== 200) alert(r.json.error || 'Could not change the stage'); load(); });
+  });
+  $('hActs').addEventListener('click', function(e){
+    if (e.target.id !== 'mkProp') return;
+    PH.api('POST', '/api/leads/' + id + '/convert').then(function(r){ if (r.json.customer_id) location.href = 'proposal.html?customer=' + r.json.customer_id; else alert(r.json.error || 'Could not create the customer'); });
+  });
+  $('actTypes').innerHTML = ACT.map(function(a){ return '<button data-t="' + a[0] + '" class="' + (a[0] === actType ? 'primary' : '') + '">' + a[1] + '</button>'; }).join('');
+  $('actTypes').addEventListener('click', function(e){ var b = e.target.closest('button'); if (!b) return; actType = b.dataset.t; [].forEach.call($('actTypes').children, function(x){ x.className = x.dataset.t === actType ? 'primary' : ''; }); });
+  $('actSave').addEventListener('click', function(){
+    PH.api('POST', '/api/leads/' + id + '/activities', { type: actType, note: $('actNote').value }).then(function(r){
+      if (r.status === 201) { $('actNote').value = ''; PH.say($('actMsg'), 'Logged', true); load(); } else PH.say($('actMsg'), r.json.error || 'Could not save', false);
+    });
+  });
+  $('tasks').addEventListener('change', function(e){ if (e.target.dataset.done) PH.api('PUT', '/api/tasks/' + e.target.dataset.done, { done: e.target.checked }).then(load); });
+
+  // follow-up dialog
+  $('addTask').addEventListener('click', function(){ $('tTitle').value = ''; $('tDate').value = addDays(2); $('tMsg').textContent = ''; $('dTask').showModal(); $('tTitle').focus(); });
+  $('tQuick').addEventListener('click', function(e){ var b = e.target.closest('button'); if (b) $('tDate').value = addDays(+b.dataset.d); });
+  $('tCancel').addEventListener('click', function(){ $('dTask').close(); });
+  $('tSave').addEventListener('click', function(){
+    PH.api('POST', '/api/tasks', { title: $('tTitle').value, type: $('tType').value, due_date: $('tDate').value, lead_id: +id }).then(function(r){
+      if (r.status === 201) { $('dTask').close(); load(); if (window.PHShell && PHShell.refreshBadge) PHShell.refreshBadge(); } else PH.say($('tMsg'), r.json.error || 'Could not save', false);
+    });
+  });
+
+  // edit dialog
+  $('editBtn').addEventListener('click', function(){
+    var l = lead;
+    $('eCo').value = l.company_name; $('eName').value = l.contact_name || ''; $('eTitle').value = l.contact_title || ''; $('eEmail').value = l.email || ''; $('ePhone').value = l.phone || '';
+    $('eEmp').value = l.employees || ''; $('eVal').value = l.est_value || ''; $('eInd').value = l.industry || ''; $('eSrc').value = l.source || ''; $('eNotes').value = l.notes || ''; $('eMsg').textContent = '';
+    var finish = function(list){ $('eOwn').innerHTML = list.map(function(u){ return '<option value="' + u.id + '"' + (u.id === l.owner_id ? ' selected' : '') + '>' + esc(u.display_name || u.username) + '</option>'; }).join(''); $('ownBox').hidden = list.length < 2; $('dEdit').showModal(); };
+    if (me.role === 'partner' && me.partner && me.partner.isOwner) PH.api('GET', '/api/team').then(function(r){ finish((r.json.users || []).filter(function(u){ return u.active; })); });
+    else finish([{ id: l.owner_id, username: l.owner_name }]);
+  });
+  $('eCancel').addEventListener('click', function(){ $('dEdit').close(); });
+  $('eSave').addEventListener('click', function(){
+    PH.api('PUT', '/api/leads/' + id, { company_name: $('eCo').value, contact_name: $('eName').value, contact_title: $('eTitle').value, email: $('eEmail').value, phone: $('ePhone').value, employees: $('eEmp').value, est_value: $('eVal').value, industry: $('eInd').value, source: $('eSrc').value, notes: $('eNotes').value, owner_id: +$('eOwn').value }).then(function(r){
+      if (r.status === 200) { $('dEdit').close(); load(); } else PH.say($('eMsg'), r.json.error || 'Could not save', false);
+    });
+  });
+
+  PH.boot(function(user){ me = user; if (!id) { $('hCo').textContent = 'No lead selected'; return; } load(); });
+})();
+</script>
+</body>
+</html>

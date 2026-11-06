@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>My profile</title>
+<style>
+  .wrap { max-width: 980px; }
+  .who { display:flex; align-items:center; gap:18px; margin-bottom:6px; }
+  .who .big-av { width:64px; height:64px; border-radius:18px; background:linear-gradient(135deg,var(--accent2),var(--accent-d)); color:#fff; display:grid; place-items:center; font-size:26px; font-weight:800; flex:none; }
+  .who h2 { font-size:22px; margin:0; } .who .sub { margin:2px 0 0; }
+  .facts { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; margin-top:6px; }
+  .fact { background:var(--s2); border-radius:12px; padding:14px 16px; }
+  .fact small { display:block; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.07em; font-weight:700; }
+  .fact b { font-size:20px; letter-spacing:-.01em; }
+  .pill { display:inline-block; padding:3px 12px; border-radius:99px; background:var(--soft); color:var(--accent-d); font-weight:700; font-size:13px; }
+  .force { background:var(--warn); border:1px solid var(--warn-bd); border-radius:12px; padding:14px 18px; margin-bottom:18px; font-weight:600; }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:18px; align-items:start; } @media (max-width:860px){ .two { grid-template-columns:1fr; } }
+</style>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem("ph-theme")||"dark"}catch(e){}</script>
+<link rel="stylesheet" href="ui.css">
+</head>
+<body>
+<div id="gate"><div class="box">
+  <h2>My profile</h2><div class="hint">Sign in to continue.</div>
+  <input type="text" id="gUser" placeholder="Username" autocomplete="username">
+  <input type="password" id="gPass" placeholder="Password" autocomplete="current-password">
+  <div class="err" id="gErr"></div><button class="primary" id="gGo">Log in</button>
+</div></div>
+
+<div class="wrap">
+  <div class="top"><h1>My profile</h1></div>
+  <div class="force" id="forceNote" hidden>You are using a temporary password. Choose your own password below to continue.</div>
+
+  <div class="card">
+    <div class="who"><div class="big-av" id="bigAv"></div><div><h2 id="whoName"></h2><div class="sub" id="whoSub"></div></div></div>
+  </div>
+
+  <div id="partnerCard" class="card" hidden>
+    <h2>Partner details</h2>
+    <div class="facts" id="partnerFacts"></div>
+  </div>
+
+  <div class="two">
+    <div class="card">
+      <h2>Contact details</h2>
+      <div class="hint" style="margin-bottom:10px">Your email is used for password reset and for replies to proposals you send.</div>
+      <label>Display name</label><input type="text" id="pName" maxlength="120">
+      <div style="height:12px"></div>
+      <label>Email</label><input type="email" id="pEmail" maxlength="160">
+      <div style="height:12px"></div>
+      <label>Mobile phone</label><input type="text" id="pPhone" maxlength="40" placeholder="0771234567">
+      <h3 style="margin:16px 0 6px">Alerts</h3>
+      <label style="display:block;font-weight:500"><input type="checkbox" id="pAlertEmail"> Email me when a client opens a proposal, accepts it or asks for a call</label>
+      <label style="display:block;font-weight:500;margin-top:6px"><input type="checkbox" id="pAlertSms"> Text me (SMS) when a client asks for a call or accepts a proposal</label>
+      <div class="hint" id="smsHint">SMS goes to the mobile number above.</div>
+      <label style="display:block;font-weight:500;margin-top:6px"><input type="checkbox" id="pAlertWa"> WhatsApp me when a client asks for a call or accepts a proposal</label>
+      <div class="hint" id="waHint">WhatsApp goes to the mobile number above. It cannot be the same number the business uses to send the alerts.</div>
+      <label style="display:block;font-weight:500;margin-top:6px"><input type="checkbox" id="pAlertPush"> Push to my phone (free <b>ntfy</b> app)</label>
+      <div class="hint" id="pushBox" hidden>1. Install the <b>ntfy</b> app (Android or iPhone). 2. Tap <b>+</b> and subscribe to this private topic: <code id="pTopic"></code> on server <code id="pServer"></code>. 3. Press Save, then send a test. Keep the topic private: anyone who has it can read your alerts. Push alerts arrive for every client event (opened, call request, accepted).</div>
+      <div style="margin-top:10px">Send me a test (save first): <button type="button" data-test="sms">SMS</button> <button type="button" data-test="whatsapp">WhatsApp</button> <button type="button" data-test="push">Push</button> <span class="msg" id="testMsg"></span></div>
+      <div style="margin-top:16px"><button class="primary" id="saveProfile">Save details</button><span class="msg" id="profMsg"></span></div>
+    </div>
+    <div class="card" id="pwCard">
+      <h2>Change password</h2>
+      <div class="hint" style="margin-bottom:10px">At least 10 characters. Other devices are signed out when you change it.</div>
+      <label>Current password</label><input type="password" id="pwCur" autocomplete="current-password">
+      <div style="height:12px"></div>
+      <label>New password</label><input type="password" id="pwNew" autocomplete="new-password">
+      <div style="height:12px"></div>
+      <label>Repeat new password</label><input type="password" id="pwNew2" autocomplete="new-password">
+      <div style="margin-top:16px"><button class="primary" id="savePw">Change password</button><span class="msg" id="pwMsg"></span></div>
+    </div>
+  </div>
+
+  <div class="card" id="logoCard" hidden>
+    <h2>Your logo on proposals</h2>
+    <div class="hint" style="margin-bottom:12px">Shown on the cover of every proposal you send, next to your company name. A PNG or JPEG works best, on a transparent or white background.</div>
+    <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap"><div id="logoPrev" style="min-width:150px;min-height:56px;background:var(--ink);border-radius:10px;padding:10px 14px;display:grid;place-items:center;color:var(--muted);font-size:12px">No logo yet</div>
+      <div><input type="file" id="logoFile" accept="image/png,image/jpeg" style="max-width:260px"> <button id="logoDel" hidden>Remove</button><div class="msg" id="logoMsg" style="margin:6px 0 0"></div></div></div>
+  </div>
+
+  <div class="card" id="ratingCard" hidden>
+    <h2>Partner rating</h2>
+    <div id="ratingBody" class="hint">Loading…</div>
+  </div>
+</div>
+
+<script src="shell.js"></script>
+<script src="app.js"></script>
+<script>
+(function(){
+  var $ = PH.$, esc = PH.esc;
+  function cap(s){ return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+  function load(){
+    PH.api('GET', '/api/me/profile').then(function(r){
+      var p = r.json || {};
+      var name = p.displayName || (p.partner && p.partner.company) || p.username || '';
+      $('bigAv').textContent = (name.charAt(0) || '?').toUpperCase();
+      $('whoName').textContent = name;
+      $('whoSub').textContent = cap(p.role) + ' · @' + p.username;
+      $('pName').value = p.displayName || ''; $('pEmail').value = p.email || ''; $('pPhone').value = p.phone || ''; $('pAlertEmail').checked = p.alertEmail !== false; $('pAlertSms').checked = !!p.alertSms; $('pAlertWa').checked = !!p.alertWhatsapp; $('pAlertPush').checked = !!p.alertPush; $('pTopic').textContent = p.ntfyTopic || '(created when you save)'; $('pServer').textContent = p.ntfyServer || 'https://ntfy.sh'; $('pushBox').hidden = !p.alertPush && !p.ntfyTopic; if (!p.whatsappAvailable) $('waHint').textContent = 'WhatsApp goes to the mobile number above. WhatsApp is not switched on at the server yet, so nothing will be sent until it is.'; if (!p.smsAvailable) $('smsHint').textContent = 'SMS goes to the mobile number above. SMS is not switched on at the server yet, so nothing will be sent until it is.';
+      if (p.partner) {
+        var q = p.partner;
+        $('partnerCard').hidden = false; $('ratingCard').hidden = false; $('logoCard').hidden = !(me && me.partner && me.partner.isOwner); showLogo(q.logo);
+        PH.api('GET', '/api/ratings/leaderboard').then(function(rr){
+          var you = ((rr.json || {}).rows || []).filter(function(x){ return x.you; })[0];
+          $('ratingBody').innerHTML = you ? '<div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap"><b style="font-size:34px;letter-spacing:-.03em;color:var(--text)">' + you.score.toFixed(0) + '<small style="font-size:14px;color:var(--muted)"> / 100</small></b><span class="pill">' + esc(you.label) + '</span><span style="color:var(--text)">Rank <b>#' + you.rank + '</b> of ' + rr.json.totalPartners + '</span><a href="rating.html" style="margin-left:auto;font-weight:700">See the leaderboard and how to improve →</a></div>' : 'Your rating will appear once your company is set up.';
+        });
+        $('partnerFacts').innerHTML =
+          '<div class="fact"><small>Company</small><b>' + esc(q.company) + '</b></div>' +
+          '<div class="fact"><small>Category</small><span class="pill">' + esc(q.category) + '</span></div>' +
+          '<div class="fact"><small>Maximum discount</small><b>' + q.maxDiscountPct + '%</b></div>' +
+          '<div class="fact"><small>Partner type</small><b>' + esc(cap(q.type)) + '</b></div>' +
+          '<div class="fact"><small>Partner since</small><b>' + new Date(q.since).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }) + '</b></div>';
+      }
+    });
+  }
+  var me = null;
+  function showLogo(url){
+    $('logoPrev').innerHTML = url ? '<img src="' + url + '" alt="" style="max-height:48px;max-width:200px;background:var(--surface);padding:5px 8px;border-radius:6px">' : 'No logo yet';
+    $('logoDel').hidden = !url;
+  }
+  // Shrinks the picture in the browser so it stays small (about 400 px wide) before it is sent
+  $('logoFile').addEventListener('change', function(){
+    var f = this.files[0]; if (!f) return;
+    var img = new Image(), url = URL.createObjectURL(f);
+    img.onload = function(){
+      var w = Math.min(400, img.width), h = Math.round(img.height * w / img.width), c = document.createElement('canvas');
+      c.width = w; c.height = h; c.getContext('2d').drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      var data = c.toDataURL('image/png');
+      PH.api('PUT', '/api/me/partner-logo', { dataUrl: data }).then(function(r){ if (r.status === 200) { PH.say($('logoMsg'), 'Logo saved', true); showLogo(data); } else PH.say($('logoMsg'), r.json.error || 'Could not save the logo', false); });
+    };
+    img.onerror = function(){ PH.say($('logoMsg'), 'That file is not a usable image', false); };
+    img.src = url;
+  });
+  $('logoDel').addEventListener('click', function(){ PH.api('DELETE', '/api/me/partner-logo').then(function(){ showLogo(null); PH.say($('logoMsg'), 'Logo removed', true); }); });
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('[data-test]'); if (!b) return;
+    PH.say($('testMsg'), 'Sending...', true);
+    PH.api('POST', '/api/me/test-alert', { channel: b.dataset.test }).then(function(r){ PH.say($('testMsg'), r.status === 200 ? 'Sent. Check your phone.' : (r.json.error || 'Could not send'), r.status === 200); });
+  });
+  $('saveProfile').addEventListener('click', function(){
+    PH.api('PUT', '/api/me/profile', { displayName: $('pName').value, email: $('pEmail').value, phone: $('pPhone').value, alertEmail: $('pAlertEmail').checked, alertSms: $('pAlertSms').checked, alertWhatsapp: $('pAlertWa').checked, alertPush: $('pAlertPush').checked }).then(function(r){
+      if (r.status === 200) { PH.say($('profMsg'), 'Saved', true); load(); if (window.PHShell) PH.api('GET', '/api/auth/me').then(function(m){ if (m.status === 200) PHShell.refresh(m.json); }); }
+      else PH.say($('profMsg'), r.json.error || 'Could not save', false);
+    });
+  });
+  $('savePw').addEventListener('click', function(){
+    if ($('pwNew').value !== $('pwNew2').value) return PH.say($('pwMsg'), 'The two new passwords do not match', false);
+    PH.api('POST', '/api/auth/change-password', { current: $('pwCur').value, next: $('pwNew').value }).then(function(r){
+      if (r.status === 200) {
+        $('pwCur').value = $('pwNew').value = $('pwNew2').value = '';
+        PH.say($('pwMsg'), 'Password changed', true);
+        if (location.hash === '#force') { location.hash = ''; location.href = 'proposals.html'; }
+      } else PH.say($('pwMsg'), r.json.error || 'Could not change password', false);
+    });
+  });
+  PH.boot(function(user){
+    me = user;
+    $('forceNote').hidden = !user.mustChangePassword;
+    if (user.mustChangePassword) { document.querySelectorAll('.card').forEach(function(c){ if (c.id !== 'pwCard') c.style.opacity = .5; }); }
+    load();
+  });
+})();
+</script>
+</body>
+</html>

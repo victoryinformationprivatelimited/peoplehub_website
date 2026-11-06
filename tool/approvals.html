@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Approvals</title>
+<style>
+  .req { display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:18px; padding:18px 0; border-top:1px solid var(--border); } .req:first-child { border-top:none; }
+  @media (max-width:820px) { .req { grid-template-columns:1fr; } }
+  .req h3 { margin:0 0 2px; text-transform:none; letter-spacing:0; font-size:16px; color:var(--text); }
+  .pct { display:inline-flex; gap:8px; align-items:baseline; margin:8px 0; } .pct b { font-size:26px; letter-spacing:-.02em; } .pct small { color:var(--muted); }
+  .why { background:var(--s2); border-radius:10px; padding:10px 14px; font-size:13.5px; margin-top:8px; }
+  .act { display:flex; flex-direction:column; gap:8px; } .act .row2 { display:grid; grid-template-columns:90px 1fr; gap:8px; }
+  .st { display:inline-block; padding:3px 11px; border-radius:99px; font-size:12px; font-weight:700; text-transform:capitalize; background:var(--neu-bg); color:var(--neu-fg); }
+  .st.approved { background:var(--ok-bg); color:var(--ok-fg); } .st.declined { background:var(--bad-bg); color:var(--bad-fg); } .st.pending { background:var(--warn-bg); color:var(--warn-fg); }
+  .empty { text-align:center; padding:44px 20px; color:var(--muted); }
+</style>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem("ph-theme")||"dark"}catch(e){}</script>
+<link rel="stylesheet" href="ui.css">
+</head>
+<body>
+<div id="gate"><div class="box">
+  <h2>Approvals</h2><div class="hint">Sign in with your PeopleHub login.</div>
+  <input type="text" id="gUser" placeholder="Username" autocomplete="username">
+  <input type="password" id="gPass" placeholder="Password" autocomplete="current-password">
+  <div class="err" id="gErr"></div><button class="primary" id="gGo">Log in</button>
+</div></div>
+
+<div class="wrap">
+  <div class="top"><h1>Discount approvals</h1></div>
+  <div class="sub">Partners ask here when a client needs more discount than their category allows. Core HR is never discounted.</div>
+  <div class="card"><h2>Waiting for a decision</h2><div id="pending"></div></div>
+  <div class="card"><h2>Recently decided</h2><div id="decided"></div></div>
+</div>
+
+<script src="shell.js"></script>
+<script src="app.js"></script>
+<script>
+(function(){
+  var $ = PH.$, esc = PH.esc, money = PH.money, me = null;
+  function ago(d){ var s = (Date.now() - new Date(d)) / 1000; if (s < 3600) return Math.max(1, Math.round(s / 60)) + ' min ago'; if (s < 86400) return Math.round(s / 3600) + ' h ago'; return Math.round(s / 86400) + ' d ago'; }
+  function load(){
+    PH.api('GET', '/api/approvals').then(function(r){
+      var all = r.json || [], pend = all.filter(function(x){ return x.status === 'pending'; }), done = all.filter(function(x){ return x.status !== 'pending'; });
+      $('pending').innerHTML = pend.length ? pend.map(function(x){
+        var impact = x.list_monthly ? money(x.list_monthly * x.requested_pct / 100) + ' a month off the list price' : '';
+        return '<div class="req"><div><h3>' + esc(x.partner_name) + ' <span class="hint" style="margin:0">· ' + esc(x.category) + ' (limit ' + x.cap + '%)</span></h3>' +
+          '<div class="hint" style="margin:0">Proposal <a href="proposal.html?open=' + x.proposal_id + '"><b>' + esc(x.ref_no) + '</b></a> for ' + esc(x.customer) + ' · asked by ' + esc(x.requester) + ' · ' + ago(x.created_at) + '</div>' +
+          '<div class="pct"><b>' + x.requested_pct + '%</b><small>requested' + (impact ? ' · ' + impact : '') + '</small></div><div class="why">' + esc(x.reason) + '</div></div>' +
+          (me.role === 'admin' ? '<div class="act"><div class="row2"><input type="number" id="ap' + x.id + '" min="1" max="100" step="0.5" value="' + x.requested_pct + '" title="Discount to grant"><input type="text" id="nt' + x.id + '" maxlength="300" placeholder="Note to the partner (required to decline)"></div><button class="primary" data-act="approve" data-id="' + x.id + '">Approve</button><button data-act="decline" data-id="' + x.id + '">Decline</button><span class="msg" id="m' + x.id + '"></span></div>' : '<div class="hint">Only an admin can decide.</div>') + '</div>';
+      }).join('') : '<div class="empty">Nothing waiting. Partners will appear here when they ask for a bigger discount.</div>';
+      $('decided').innerHTML = done.length ? done.map(function(x){
+        return '<div class="req" style="grid-template-columns:1fr auto;padding:12px 0"><div><b>' + esc(x.partner_name) + '</b> · <a href="proposal.html?open=' + x.proposal_id + '">' + esc(x.ref_no) + '</a> · asked ' + x.requested_pct + '%' + (x.approved_pct ? ', granted <b>' + x.approved_pct + '%</b>' : '') + (x.decision_note ? '<div class="hint" style="margin:2px 0 0">' + esc(x.decision_note) + '</div>' : '') + '</div><div style="text-align:right"><span class="st ' + esc(x.status) + '">' + esc(x.status) + '</span><div class="hint" style="margin:2px 0 0">' + esc(x.decided_by_name || '') + ' · ' + ago(x.decided_at) + '</div></div></div>';
+      }).join('') : '<div class="hint">No decisions yet.</div>';
+    });
+  }
+  $('pending').addEventListener('click', function(e){
+    var b = e.target.closest('[data-act]'); if (!b) return;
+    var id = b.dataset.id, body = { action: b.dataset.act, note: $('nt' + id).value };
+    if (b.dataset.act === 'approve') body.approved_pct = $('ap' + id).value;
+    PH.api('PUT', '/api/approvals/' + id, body).then(function(r){ if (r.status === 200) { load(); if (window.PHShell && PHShell.refreshBadge) PHShell.refreshBadge(); } else PH.say($('m' + id), r.json.error || 'Failed', false); });
+  });
+  PH.boot(function(user){
+    me = user;
+    if (user.role === 'partner') { $('pending').innerHTML = '<div class="hint">This page is for Victory staff. Ask for a discount from the proposal itself.</div>'; return; }
+    load();
+  });
+})();
+</script>
+</body>
+</html>

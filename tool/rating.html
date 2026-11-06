@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Partner rating</title>
+<style>
+  .hero { background:radial-gradient(120% 140% at 0% 0%, rgba(16,185,129,.35), transparent 60%), linear-gradient(135deg,var(--ink),var(--hero-end)); color:#fff; border-radius:var(--radius); padding:26px 28px; margin-bottom:18px; display:grid; grid-template-columns:auto 1fr; gap:28px; align-items:center; }
+  .hero .big { font-size:64px; font-weight:800; letter-spacing:-.04em; line-height:1; } .hero .big small { font-size:20px; color:var(--accent2); font-weight:600; }
+  .hero small.k { color:var(--accent2); text-transform:uppercase; letter-spacing:.09em; font-size:11px; font-weight:700; display:block; margin-bottom:6px; }
+  .hero .meta { display:flex; flex-wrap:wrap; gap:10px 22px; align-items:center; } .hero .meta b { font-size:22px; }
+  .half { background:linear-gradient(90deg,#f5b82e 50%,rgba(150,160,155,.35) 50%); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .stars { color:#f5b82e; letter-spacing:2px; font-size:20px; } .stars .off { color:rgba(255,255,255,.25); }
+  .lbl { display:inline-block; padding:3px 12px; border-radius:99px; font-weight:800; font-size:12px; background:rgba(255,255,255,.14); color:#fff; }
+  .trend { font-weight:700; font-size:13px; } .trend.up { color:var(--accent2); } .trend.down { color:#fca5a5; }
+  .prog { margin-top:16px; } .prog .bar { height:10px; background:rgba(255,255,255,.14); border-radius:99px; overflow:hidden; } .prog .bar i { display:block; height:100%; background:linear-gradient(90deg,var(--accent2),var(--accent2)); border-radius:99px; }
+  .prog span { font-size:13px; color:var(--muted); display:block; margin-top:6px; }
+  @media (max-width:760px) { .hero { grid-template-columns:1fr; } }
+  .two { display:grid; grid-template-columns:minmax(0,1fr) 380px; gap:18px; align-items:start; } @media (max-width:1060px) { .two { grid-template-columns:1fr; } }
+  .part { display:grid; grid-template-columns:150px 1fr 70px; gap:12px; align-items:center; padding:7px 0; font-size:13.5px; }
+  .part .tr { height:10px; background:var(--s3); border-radius:99px; overflow:hidden; } .part .tr i { display:block; height:100%; background:var(--accent); border-radius:99px; } .part b { text-align:right; font-variant-numeric:tabular-nums; }
+  .next li { margin:8px 0; } .next b { color:var(--good); }
+  .lb { width:100%; } .lb td { padding:11px 8px; }
+  .rk { width:30px; height:30px; border-radius:50%; display:grid; place-items:center; font-weight:800; font-size:13px; background:var(--s3); color:var(--muted); }
+  .rk.r1 { background:#f5d874; color:#5a4400; } .rk.r2 { background:#d8dee2; color:#3d464c; } .rk.r3 { background:#e3b48a; color:#573312; }
+  tr.you td { background:var(--soft) !important; } tr.you td:first-child { box-shadow:inset 3px 0 0 var(--accent); }
+  .sbar { display:inline-block; width:90px; height:8px; background:var(--s3); border-radius:99px; vertical-align:middle; margin-right:8px; overflow:hidden; } .sbar i { display:block; height:100%; background:var(--accent); }
+  .stars2 { color:#e2a911; letter-spacing:1px; } .stars2 .off { color:var(--border); }
+  .bd { display:inline-block; font-size:11px; font-weight:700; padding:2px 9px; border-radius:99px; background:var(--warn-bg); color:var(--warn-fg); margin:1px 3px 1px 0; }
+  .tt { font-size:12.5px; font-weight:700; } .tt.up { color:var(--good); } .tt.down { color:var(--danger); } .tt.flat { color:var(--muted); }
+  .sg { display:flex; gap:14px; align-items:center; flex-wrap:wrap; padding:12px 0; border-top:1px solid var(--border); } .sg:first-of-type { border-top:none; } .sg .sp { flex:1; min-width:200px; }
+  .explain li { margin:6px 0; }
+  details summary { cursor:pointer; font-weight:700; }
+</style>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem("ph-theme")||"dark"}catch(e){}</script>
+<link rel="stylesheet" href="ui.css">
+</head>
+<body>
+<div id="gate"><div class="box">
+  <h2>Partner rating</h2><div class="hint">Sign in with your PeopleHub login.</div>
+  <input type="text" id="gUser" placeholder="Username" autocomplete="username">
+  <input type="password" id="gPass" placeholder="Password" autocomplete="current-password">
+  <div class="err" id="gErr"></div><button class="primary" id="gGo">Log in</button>
+</div></div>
+
+<div class="wrap">
+  <div class="top"><h1>Partner rating</h1></div>
+  <div class="sub" id="subLine">Ratings come from real activity over the last 12 months. Everyone can see the leaderboard.</div>
+
+  <div id="mine"></div>
+
+  <div class="two">
+    <div>
+      <div class="card"><h2>Leaderboard</h2><div class="table-wrap" style="margin-top:8px"><table class="lb"><tbody id="rows"></tbody></table></div></div>
+      <div class="card" id="sugCard" hidden><h2>Tier suggestions</h2><div class="hint" style="margin-bottom:6px">Based on the rating and how long the partner has been with us. An admin decides.</div><div id="sugs"></div></div>
+    </div>
+    <div>
+      <div class="card"><h2>How the score works</h2>
+        <ul class="explain" style="padding-left:18px;margin:10px 0 0">
+          <li><b>Wins and revenue · 40</b><br><span class="hint">Monthly value you have won, and how many deals, in the last 12 months.</span></li>
+          <li><b>Win rate · 15</b><br><span class="hint">Won against lost. Neutral until you have a few decisions.</span></li>
+          <li><b>Follow-up habit · 15</b><br><span class="hint">Follow-ups finished on or before the due date.</span></li>
+          <li><b>Pipeline activity · 15</b><br><span class="hint">Leads registered and proposals sent, last 90 days.</span></li>
+          <li><b>Engagement · 15</b><br><span class="hint">Presentations given and calls or meetings logged, last 90 days.</span></li>
+        </ul>
+        <div class="hint" style="margin-top:10px">Other partners only see your score, rank and badges, never your customers or revenue.</div>
+      </div>
+      <div class="card" id="setCard" hidden><h2>Targets</h2><div class="hint" style="margin-bottom:8px">The numbers that earn full marks. Only an admin can change them.</div><div id="settings"></div><button class="primary" id="setSave" style="margin-top:10px">Save targets</button><span class="msg" id="setMsg"></span></div>
+    </div>
+  </div>
+</div>
+
+<script src="shell.js"></script>
+<script src="app.js"></script>
+<script>
+(function(){
+  var $ = PH.$, esc = PH.esc, me = null, data = null;
+  var NAMES = { revenue: 'Wins and revenue', winRate: 'Win rate', discipline: 'Follow-up habit', pipeline: 'Pipeline activity', engagement: 'Engagement' };
+  var SET = [['revenueTarget', 'Monthly value won for full marks (USD)'], ['winsTarget', 'Deals won for full marks'], ['minDecided', 'Decisions before win rate counts'], ['pipelineTarget', 'Leads + proposals sent (90 days)'], ['presentationsTarget', 'Presentations (90 days)'], ['activitiesTarget', 'Calls and meetings logged (90 days)']];
+  function stars(n, cls){ var s = ''; for (var i = 1; i <= 5; i++) s += i <= n ? '★' : (i - 0.5 === n ? '<span class="half">★</span>' : '<span class="off">★</span>'); return '<span class="' + (cls || 'stars') + '">' + s + '</span>'; }
+  function trend(t){ if (t == null) return '<span class="tt flat">new</span>'; if (t >= 0.5) return '<span class="tt up">▲ ' + t.toFixed(1) + '</span>'; if (t <= -0.5) return '<span class="tt down">▼ ' + Math.abs(t).toFixed(1) + '</span>'; return '<span class="tt flat">–</span>'; }
+
+  function render(){
+    var rows = data.rows, you = rows.filter(function(x){ return x.you; })[0];
+    if (you) {
+      var tier = data.tier, pct = tier ? Math.max(4, Math.min(100, Math.round(you.score / Math.max(1, tier.needed) * 100))) : 0;
+      $('mine').innerHTML = '<div class="hero"><div><small class="k">Your rating</small><div class="big">' + you.score.toFixed(0) + '<small> / 100</small></div></div><div>' +
+        '<div class="meta"><span>' + stars(you.stars) + '</span><span class="lbl">' + esc(you.label) + '</span><span><small class="k" style="margin:0">Rank</small><b>#' + you.rank + '</b> of ' + data.totalPartners + '</span><span>' + (you.trend != null ? '<span class="trend ' + (you.trend >= 0 ? 'up' : 'down') + '">' + (you.trend >= 0 ? '▲ +' : '▼ ') + you.trend.toFixed(1) + ' in 30 days</span>' : '<span class="trend">First month: trend appears soon</span>') + '</span></div>' +
+        (you.toNextRank ? '<div style="margin-top:10px;color:var(--muted)">' + you.toNextRank.points + ' points to pass ' + esc(you.toNextRank.company) + '</div>' : '<div style="margin-top:10px;color:var(--accent2);font-weight:700">You are leading the leaderboard.</div>') +
+        (tier ? '<div class="prog"><div class="bar"><i style="width:' + Math.min(100, pct) + '%"></i></div><span>' + (tier.reached ? 'You have reached the score for <b>' + esc(tier.next) + '</b> (' + tier.nextDiscount + '% discount). Your category is reviewed by Victory.' : 'Next category: <b>' + esc(tier.next) + '</b> (' + tier.nextDiscount + '% discount) at a score of ' + tier.needed + '. You are at ' + you.score.toFixed(0) + '.') + '</span></div>' : '') +
+        '</div></div>' +
+        '<div class="two" style="margin-bottom:18px"><div class="card" style="margin:0"><h2>Your score, part by part</h2>' + Object.keys(NAMES).map(function(k){ var mx = data.max[k], v = you.parts[k]; return '<div class="part"><span>' + NAMES[k] + '</span><span class="tr"><i style="width:' + Math.round(v / mx * 100) + '%"></i></span><b>' + v.toFixed(1) + ' / ' + mx + '</b></div>'; }).join('') + (you.provisional ? '<div class="hint" style="margin-top:6px">Win rate is provisional until you have a few won or lost proposals.</div>' : '') + '</div>' +
+        '<div class="card" style="margin:0"><h2>Your next best steps</h2><ul class="next" style="padding-left:18px;margin:10px 0 0">' + (you.hints.length ? you.hints.map(function(h){ return '<li>' + esc(h.text) + ' <b>+' + h.points + '</b></li>'; }).join('') : '<li>You are doing everything right. Keep it up.</li>') + '</ul></div></div>';
+    } else $('mine').innerHTML = '';
+    $('rows').innerHTML = rows.map(function(x){
+      return '<tr class="' + (x.you ? 'you' : '') + '" data-p="' + x.partner_id + '"><td><span class="rk r' + (x.rank <= 3 ? x.rank : 0) + '">' + x.rank + '</span></td><td><b>' + esc(x.company) + '</b>' + (x.you ? ' <span class="tag">You</span>' : '') + '<br><span class="hint" style="margin:0">' + esc(x.category) + '</span></td>' +
+        '<td>' + stars(x.stars, 'stars2') + '</td><td><span class="sbar"><i style="width:' + x.score + '%"></i></span><b>' + x.score.toFixed(0) + '</b> <span class="hint" style="margin:0">' + esc(x.label) + '</span></td><td>' + trend(x.trend) + '</td><td>' + (x.badges || []).map(function(b){ return '<span class="bd">' + esc(b) + '</span>'; }).join('') + '</td></tr>' +
+        (me.role !== 'partner' && x.parts ? '<tr class="det" hidden data-d="' + x.partner_id + '"><td></td><td colspan="5" class="hint">' + Object.keys(NAMES).map(function(k){ return NAMES[k] + ' <b>' + x.parts[k].toFixed(1) + '</b>'; }).join(' · ') + '<br>Won ' + x.metrics.wins + ' · Lost ' + x.metrics.lost + ' · $' + Math.round(x.metrics.mrrWon).toLocaleString() + '/mo won · Leads ' + x.metrics.leads + ' · Proposals sent ' + x.metrics.proposalsSent + ' · Presentations ' + x.metrics.presentations + ' · Activities ' + x.metrics.activities + ' · Follow-ups on time ' + x.metrics.tasksOnTime + '/' + x.metrics.tasksDue + '</td></tr>' : '');
+    }).join('') || '<tr><td class="hint">No partners yet.</td></tr>';
+  }
+  $('rows').addEventListener('click', function(e){ var tr = e.target.closest('tr[data-p]'); if (!tr) return; var d = document.querySelector('tr[data-d="' + tr.dataset.p + '"]'); if (d) d.hidden = !d.hidden; });
+
+  function loadSug(){
+    PH.api('GET', '/api/ratings/suggestions').then(function(r){
+      var s = r.json || [], pend = s.filter(function(x){ return x.status === 'pending'; });
+      $('sugCard').hidden = false;
+      $('sugs').innerHTML = (pend.length ? pend : []).map(function(x){
+        return '<div class="sg"><div class="sp"><b>' + esc(x.company_name) + '</b><br><span class="hint" style="margin:0">' + (x.kind === 'upgrade' ? 'Ready to move up' : 'Consider a review') + ': ' + esc(x.from_name) + ' (' + x.from_discount + '%) → ' + esc(x.to_name) + ' (' + x.to_discount + '%) · score ' + x.score.toFixed(0) + '</span></div>' +
+          (me.role === 'admin' ? '<button class="primary" data-act="approve" data-id="' + x.id + '">Approve</button><button data-act="dismiss" data-id="' + x.id + '">Dismiss</button>' : '<span class="hint">Awaiting admin</span>') + '</div>';
+      }).join('') || '<div class="hint">No changes suggested right now.</div>';
+    });
+  }
+  $('sugs').addEventListener('click', function(e){
+    var b = e.target.closest('[data-act]'); if (!b) return;
+    if (b.dataset.act === 'approve' && !confirm('Move this partner to the new category? Their maximum discount changes straight away.')) return;
+    PH.api('PUT', '/api/ratings/suggestions/' + b.dataset.id, { action: b.dataset.act }).then(function(r){ if (r.status !== 200) alert(r.json.error || 'Failed'); loadSug(); load(); });
+  });
+  function loadSettings(){
+    PH.api('GET', '/api/ratings/settings').then(function(r){
+      $('setCard').hidden = false;
+      $('settings').innerHTML = SET.map(function(s){ return '<label>' + esc(s[1]) + '</label><input type="number" min="1" id="set_' + s[0] + '" value="' + r.json[s[0]] + '"' + (me.role === 'admin' ? '' : ' disabled') + ' style="margin-bottom:8px">'; }).join('');
+      $('setSave').hidden = me.role !== 'admin';
+    });
+  }
+  $('setSave').addEventListener('click', function(){
+    var body = {}; SET.forEach(function(s){ body[s[0]] = +$('set_' + s[0]).value; });
+    PH.api('PUT', '/api/ratings/settings', body).then(function(r){ if (r.status === 200) { PH.say($('setMsg'), 'Saved', true); load(); } else PH.say($('setMsg'), r.json.error || 'Could not save', false); });
+  });
+  function load(){ PH.api('GET', '/api/ratings/leaderboard').then(function(r){ data = r.json; render(); }); }
+  PH.boot(function(user){
+    me = user; load();
+    if (user.role !== 'partner') { $('subLine').textContent = 'Every partner scored from real activity over the last 12 months. Click a row to see the numbers behind a score.'; loadSug(); loadSettings(); }
+  });
+})();
+</script>
+</body>
+</html>

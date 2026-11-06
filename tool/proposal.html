@@ -1,0 +1,918 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>PeopleHub Proposal</title>
+<style>
+  :root { --bg:#f6f6fb; --surface:#fff; --s2:#eef0f8; --border:#dcdfeb; --text:#1b1c28; --muted:#5c5f74; --accent:#4338ca; --soft:#eceafc; --good:#15803d; --danger:#b91c1c; --warn:var(--warn-bg); --green:#0b6b4f; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 -apple-system,'Segoe UI',sans-serif; }
+  .wrap { max-width:1240px; margin:0 auto; padding:20px 20px 80px; }
+  h1 { font-size:22px; margin:0; } h2 { font-size:16px; margin:0 0 4px; } h3 { font-size:13px; margin:14px 0 6px; }
+  .top { display:flex; gap:14px; align-items:center; flex-wrap:wrap; margin-bottom:14px; }
+  .top .sp { flex:1; } .top a { color:var(--accent); font-weight:600; text-decoration:none; }
+  .steps { display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap; }
+  .step { flex:1; min-width:120px; padding:9px 12px; border:1px solid var(--border); border-radius:8px; background:var(--surface); color:var(--muted); font-weight:600; cursor:pointer; text-align:left; }
+  .step b { display:inline-block; width:20px; height:20px; border-radius:50%; background:var(--s2); text-align:center; line-height:20px; font-size:11px; margin-right:6px; }
+  .step.active { border-color:var(--accent); color:var(--accent); background:var(--soft); } .step.active b { background:var(--accent); color:#fff; }
+  .step.done b { background:var(--good); color:#fff; }
+  .layout { display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:16px; align-items:start; }
+  @media (max-width:960px) { .layout { grid-template-columns:1fr; } }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px 18px; margin-bottom:14px; }
+  .hint { color:var(--muted); font-size:12px; }
+  input[type=text], input[type=email], input[type=search], input[type=number], select, textarea { width:100%; padding:7px 9px; border:1px solid var(--border); border-radius:6px; background:var(--s2); font:inherit; }
+  textarea { min-height:60px; resize:vertical; }
+  label.f { display:block; font-size:12px; color:var(--muted); margin-bottom:3px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:10px 14px; margin-bottom:10px; }
+  button { padding:8px 14px; border-radius:7px; border:1px solid var(--border); background:var(--s2); font:inherit; font-weight:600; cursor:pointer; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  button.link { border:none; background:none; color:var(--accent); padding:2px 6px; } button.danger { color:var(--danger); }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  .nav { display:flex; justify-content:space-between; margin-top:6px; }
+  .pick { padding:8px 10px; border:1px solid var(--border); border-radius:8px; margin-bottom:6px; cursor:pointer; background:var(--surface); }
+  .pick:hover, .pick.sel { border-color:var(--accent); background:var(--soft); } .pick small { color:var(--muted); display:block; }
+  .opt { display:flex; gap:10px; padding:8px 10px; border:1px solid var(--border); border-radius:8px; margin-bottom:6px; background:var(--surface); }
+  .opt input { margin-top:3px; } .opt small { color:var(--muted); display:block; }
+  .opt.on { border-color:var(--accent); background:var(--soft); }
+  .msg { font-size:12px; margin-left:8px; } .msg.ok { color:var(--good); } .msg.err { color:var(--danger); }
+  .summary { position:sticky; top:12px; }
+  .summary .line { display:flex; justify-content:space-between; gap:10px; padding:5px 0; border-bottom:1px dashed var(--border); font-size:13px; }
+  .summary .line small { color:var(--muted); display:block; }
+  .summary .total { font-weight:700; font-size:16px; color:var(--accent); border:none; }
+  .summary .err { color:var(--danger); font-size:12px; }
+  .note { background:var(--warn); border:1px solid var(--warn-bd); border-radius:8px; padding:8px 12px; font-size:12px; margin-bottom:10px; }
+  .row { display:grid; grid-template-columns:1fr 90px auto; gap:8px; margin-bottom:6px; align-items:start; }
+  table.mini { width:100%; border-collapse:collapse; font-size:13px; } table.mini td { padding:4px 6px; border-top:1px solid var(--border); }
+  #gate { position:fixed; inset:0; background:#0a0d1c; display:flex; align-items:center; justify-content:center; z-index:50; }
+  #gate .box { background:var(--surface); border-radius:12px; padding:28px; width:340px; }
+  #gate input { margin-bottom:12px; } #gate .err { color:var(--danger); font-size:12px; min-height:16px; }
+  body.authed #gate { display:none; } body:not(.authed) .wrap { display:none; }
+  [hidden] { display:none !important; }
+
+  .stp { display:inline-block; padding:3px 12px; border-radius:99px; font-size:12.5px; font-weight:700; text-transform:capitalize; background:var(--neu-bg); color:var(--neu-fg); }
+  .stp.sent, .stp.viewed { background:var(--info-bg); color:var(--info-fg); } .stp.negotiating { background:var(--warn-bg); color:var(--warn-fg); } .stp.accepted { background:var(--ok-bg); color:var(--ok-fg); } .stp.lost { background:var(--bad-bg); color:var(--bad-fg); } .stp.superseded { background:var(--neu-bg); color:var(--muted); }
+  .int { display:inline-block; padding:3px 12px; border-radius:99px; font-size:12.5px; font-weight:800; letter-spacing:.02em; }
+  .int.Hot { background:var(--bad-bg); color:var(--bad-fg); } .int.Warm { background:var(--warn-bg); color:var(--warn-fg); } .int.Cold { background:var(--info-bg); color:var(--info-fg); } .int.Waiting, .int.Draft, .int.Replaced { background:var(--neu-bg); color:var(--neu-fg); } .int.Won { background:var(--ok-bg); color:var(--ok-fg); } .int.Lost { background:var(--neu-bg); color:var(--muted); }
+  .act { background:var(--s2); border-radius:12px; padding:14px 16px; }
+  .act .kp { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:10px; margin:12px 0; }
+  .act .kp div { background:var(--surface); border-radius:10px; padding:9px 12px; } .act .kp small { display:block; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.06em; font-weight:700; } .act .kp b { font-size:18px; }
+  .act ul { margin:6px 0 0; padding-left:18px; color:var(--text); font-size:13px; } .act li b { color:var(--good); } .act li b.neg { color:var(--danger); }
+  .act .lnk { display:flex; gap:8px; margin-top:10px; } .act .lnk input { font-size:12.5px; }
+  #verBox a { font-weight:700; margin-right:12px; } #verBox a.cur { color:var(--text); text-decoration:none; }
+  .tl { display:grid; grid-template-columns:150px 1fr; gap:4px 12px; font-size:12.5px; color:var(--muted); } .tl b { color:var(--text); font-weight:600; }
+
+  @media print {
+    body { background:var(--surface); }
+    #reviewArea > *:not(#docWrap), .top, .steps, .summary, #gate, #listCard, #navBtns, #s1, #s2, #s3 { display:none !important; }
+    .wrap { max-width:none; padding:0; } .layout { display:block; }
+    #docWrap { border:none; border-radius:0; } .pg { padding:18mm 16mm; border:none; }
+    .cover { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    table.doc th, .big, table.doc tr.sub td { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  }
+</style>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem("ph-theme")||"dark"}catch(e){}</script>
+<link rel="stylesheet" href="ui.css">
+<link rel="stylesheet" href="doc.css">
+</head>
+<body>
+
+<div id="gate">
+  <div class="box">
+    <h2>PeopleHub Proposal</h2>
+    <div class="hint" style="margin-bottom:12px">Sign in with your PeopleHub pricing login.</div>
+    <input type="text" id="gUser" placeholder="Username" autocomplete="username">
+    <input type="password" id="gPass" placeholder="Password" autocomplete="current-password">
+    <div class="err" id="gErr"></div>
+    <button class="primary" id="gGo" style="width:100%">Log in</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="top">
+    <h1>Proposal</h1>
+    <span class="hint" id="refLabel"></span>
+    <div class="sp"></div>
+    <a href="customers.html">Customers</a>
+    <a href="price-list.html">Price list</a>
+    <button id="listBtn">My proposals</button>
+    <button id="newPropBtn">New proposal</button>
+    <span id="whoami" class="hint"></span>
+    <button id="logoutBtn">Log out</button>
+  </div>
+
+  <div class="card" id="listCard" hidden>
+    <h2>Proposals</h2>
+    <table class="mini" id="listTable"></table>
+  </div>
+
+  <div class="steps" id="steps"></div>
+
+  <div class="layout">
+    <div id="main">
+
+      <!-- Step 1 -->
+      <div id="s1">
+        <div class="card">
+          <h2>1. Customer</h2>
+          <div class="hint" style="margin-bottom:10px">Choose a saved customer, or add a new one.</div>
+          <input type="search" id="custQ" placeholder="Search customers by name, contact or email">
+          <div id="custList" style="margin-top:10px"></div>
+          <div style="margin:10px 0"><button id="custNewBtn">+ New customer</button></div>
+          <div id="custNew" hidden>
+            <div class="grid">
+              <div><label class="f">Organisation name *</label><input type="text" id="ncName"></div>
+              <div><label class="f">Industry</label><input type="text" id="ncIndustry"></div>
+              <div><label class="f">Contact name</label><input type="text" id="ncContact"></div>
+              <div><label class="f">Contact title</label><input type="text" id="ncTitle"></div>
+              <div><label class="f">Contact email</label><input type="email" id="ncEmail"></div>
+              <div><label class="f">Contact phone</label><input type="text" id="ncPhone"></div>
+            </div>
+            <button class="primary" id="ncSave">Save customer</button><span class="msg" id="ncMsg"></span>
+          </div>
+        </div>
+        <div class="card" id="chosen" hidden>
+          <h2 id="chosenName"></h2>
+          <label class="f">Send the proposal to</label>
+          <select id="contactSel"></select>
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div id="s2" hidden>
+        <div class="card" id="tplCard">
+          <h2>Start from a saved template</h2>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+            <select id="tplSel" style="flex:1;min-width:220px"></select>
+            <button id="tplApply">Use this template</button> <button id="tplDel" hidden>Delete</button>
+          </div>
+          <div class="hint" id="tplNote" style="margin-top:8px">A template pre-fills this Scope page (modules, users, notifications, discounts and the proposal style) so you do not start from zero. To make one: set up a proposal the way you like, go to the last step (Review) and press "Save as template".</div>
+        </div>
+        <div class="card">
+          <h2>2. Scope</h2>
+          <div class="grid">
+            <div><label class="f">Number of employees *</label><input type="number" id="employees" min="1" step="1"><div class="hint" id="bandHint"></div></div>
+            <div><label class="f">Administrator seats (main app)</label><input type="number" id="adminSeats" min="0" step="1" value="3"><div class="hint" id="seatHint"></div></div>
+            <div><label class="f">Employee portal users</label><input type="number" id="portalUsers" min="0" step="1" value="0"><div class="hint"><a href="#" id="portalSame">same as employees</a> — web, Android and iOS under one licence</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3 style="margin-top:0">Core HR (included in every proposal)</h3>
+          <div class="hint" id="coreList"></div>
+          <div id="optGroups"></div>
+        </div>
+        <div class="card" id="implCard">
+          <h3 style="margin-top:0">Implementation fee</h3>
+          <div class="hint" style="margin-bottom:10px">Implementation depends on the client's requirements and scope, so you set this fee yourself. The guideline below is only a suggestion; you do not have to follow it. You bill the implementation directly, and it is not discounted.</div>
+          <div class="grid">
+            <div><label class="f">How do you want to price it?</label><select id="implMode"><option value="own">Enter my own fee</option><option value="guideline">Use the guideline</option><option value="agreed">To be agreed after discovery</option></select></div>
+            <div id="implAmtBox"><label class="f">Implementation fee (USD)</label><input type="number" id="implAmount" min="0" step="0.01" placeholder="0.00"></div>
+          </div>
+          <div id="implBody" class="hint" style="margin-top:8px"></div>
+          <div id="implMore" style="margin-top:12px">
+            <label class="f">What the implementation covers (shown in the proposal)</label>
+            <textarea id="implScope" rows="3" maxlength="1500" placeholder="For example: 3 sites, data migration from Excel, payroll set-up and 2 days of training."></textarea>
+            <label class="f" style="margin-top:10px">Payment parts (must add up to 100%)</label>
+            <div id="implMs"></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3 style="margin-top:0">Storage, notifications and integration</h3>
+          <div class="grid">
+            <div><label class="f">Extra storage needed (GB)</label><input type="number" id="extraStorageGB" min="0" value="0"><div class="hint" id="storageHint"></div></div>
+            <div><label class="f"><input type="checkbox" id="nSmsOn"> SMS activated: messages per month</label><input type="number" id="nSms" min="0" value="0"></div>
+            <div><label class="f"><input type="checkbox" id="nWaOn"> WhatsApp activated: messages per month</label><input type="number" id="nWa" min="0" value="0"></div>
+            <div><label class="f"><input type="checkbox" id="nEmailOn"> Email activated: messages per month</label><input type="number" id="nEmail" min="0" value="0"></div>
+            <div><label class="f">WDMS devices (biometric / access terminals)</label><input type="number" id="wdmsDevices" min="0" value="0"><div class="hint">WDMS configuration is 3 USD per device per month.</div></div>
+            <div><label class="f">Integration hours (one-time)</label><input type="number" id="intHours" min="0" value="0"></div>
+          </div>
+          <div class="hint">SMS, WhatsApp and email are charged by usage, only for the channels switched on. In-app and push notifications are free. Integration is billed per hour.</div>
+          <div class="hint" id="essWarn" style="color:var(--warn-fg);margin-top:8px" hidden>Time and Attendance is selected without the Employee Self-Service portal. Mobile attendance with geo-fencing needs the Employee Self-Service licence, so add portal users if the client wants it.</div>
+        </div>
+        <div class="card">
+          <h3 style="margin-top:0">Customisation</h3>
+          <div class="hint" style="margin-bottom:8px">Anything the client needs built or changed. Each item is charged by the hour.</div>
+          <div id="customRows"></div>
+          <button id="addCustom">+ Add customisation</button>
+        </div>
+      </div>
+
+      <!-- Step 3 -->
+      <div id="s3" hidden>
+        <div class="card">
+          <h2>3. Commercials</h2>
+          <div class="grid">
+            <div><label class="f">Licence model</label>
+              <select id="billType"><option value="subscription">Subscription (monthly fee)</option><option value="perpetual">Perpetual licence (one-time + annual maintenance)</option></select></div>
+            <div id="termBox"><label class="f">Billing</label>
+              <select id="billTerm"><option value="monthly">Monthly</option><option value="annual">Annual prepay</option><option value="2yr">2-year prepay</option><option value="3yr">3-year prepay</option></select></div>
+            <div><label class="f">Proposal valid for (days)</label><input type="number" id="validity" min="1" value="30"></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3 style="margin-top:0">Discounts</h3>
+          <div class="hint" id="capHint" style="margin-bottom:8px"></div>
+          <div id="discRows"></div>
+          <div id="approvalBox" hidden style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)"></div>
+          <button id="addDisc">+ Add discount</button>
+          <div class="hint" style="margin-top:8px">Discounts stack one after another. Core HR is the minimum fee and is never discounted.</div>
+        </div>
+        <div class="card" id="styleCard">
+          <h3 style="margin-top:0">Proposal style</h3>
+          <div class="hint" style="margin-bottom:10px">How much the client receives. Standard suits most clients; use Comprehensive for tenders and formal evaluations.</div>
+          <div class="optgrid" id="styleOpts"></div>
+          <h3>Sections in this proposal</h3>
+          <div id="secOpts"></div>
+          <div class="hint" style="margin-top:8px"><a href="proposal-text.html">Edit the wording of the sections</a></div>
+        </div>
+      </div>
+
+      <!-- Step 4 -->
+      <div id="s4" hidden>
+        <div id="reviewArea">
+          <div class="card">
+            <h2>4. Review and generate</h2>
+            <div class="hint" style="margin-bottom:10px">Check the proposal below. Save it, then export a PDF.</div>
+            <button class="primary" id="saveBtn">Save proposal</button>
+            <button id="pdfBtn">Export PDF</button>
+            <button id="sentBtn" hidden>Mark as sent</button>
+            <button id="emailBtn">Email to client</button>
+            <button id="tplSave">Save as template</button>
+            <span class="msg" id="saveMsg"></span>
+            <div id="pipeline" hidden style="flex:0 0 100%;border-top:1px solid var(--border);padding-top:14px;margin-top:4px">
+              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                <span class="hint" style="margin:0">Status</span><span class="stp" id="stPill"></span>
+                <span style="flex:1"></span><span id="stActions"></span>
+              </div>
+              <div id="verBox" class="hint" style="margin-top:10px"></div>
+              <div class="hint" id="mHistory" style="margin-top:10px"></div>
+              <div id="activity" style="margin-top:14px"></div>
+              <details id="tlBox" style="margin-top:8px"><summary class="hint" style="cursor:pointer">History</summary><div id="timeline" style="margin-top:8px"></div></details>
+            </div>
+            <div id="emailForm" hidden style="margin-top:12px;border-top:1px solid var(--line,#ddd);padding-top:12px">
+              <div class="field"><label>To</label><input type="text" id="mTo" maxlength="400" placeholder="client@company.com (separate several with commas)"></div>
+              <div class="field"><label>Also send to (optional)</label><input type="text" id="mCc" maxlength="400" placeholder="finance@company.com, ceo@company.com"></div>
+              <div class="field"><label>Subject</label><input type="text" id="mSubject" maxlength="200"></div>
+              <div class="field"><label>Message</label>
+                <div class="mtb" style="display:flex;gap:6px;flex-wrap:wrap;margin:4px 0"><button type="button" data-mf="b"><b>B</b></button><button type="button" data-mf="h">Heading</button><button type="button" data-mf="li">&bull; Bullet</button><button type="button" data-mf="a">Link</button><button type="button" data-mf="img">Insert picture</button><input type="file" id="mImgFile" accept="image/png,image/jpeg,image/webp" hidden></div>
+                <textarea id="mBody" rows="9" maxlength="6000"></textarea></div>
+              <div class="field"><label>Include in the email</label>
+                <label style="display:block;font-weight:500"><input type="checkbox" id="mOptSummary" checked> Price summary box (monthly and one-time totals)</label>
+                <label style="display:block;font-weight:500"><input type="checkbox" id="mOptLink" checked> "View your proposal online" button (lets you see when it is opened)</label>
+                <label style="display:block;font-weight:500"><input type="checkbox" id="mOptPdf"> Attach the proposal as a PDF (off by default; the online link is tracked, an attachment is not)</label></div>
+              <div class="field"><label>Extra attachments (up to 5 files, 5 MB each)</label>
+                <input type="file" id="mFile" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.csv,.txt">
+                <div id="mFiles" class="hint" style="margin-top:6px"></div></div>
+              <div style="margin-bottom:8px"><button type="button" id="mPreview">Preview email</button></div>
+              <iframe id="mPrev" sandbox="" hidden style="width:100%;height:420px;border:1px solid var(--border);border-radius:10px;background:#fff;margin-bottom:10px"></iframe>
+              <div class="hint" style="margin-bottom:8px">Each address gets its own email. Write the message in your own words, choose what to include, and use Preview to see exactly what the client gets. Sending a draft marks it as sent; sending again later is a resend and does not create a new version.</div>
+              <button class="primary" id="mSend">Send email</button> <button id="mCancel">Cancel</button>
+              <span class="msg" id="mMsg"></span>
+            </div>
+          </div>
+          <div id="docWrap"></div>
+        </div>
+      </div>
+
+      <div class="nav" id="navBtns"><button id="backBtn">← Back</button><button id="draftBtn" title="Keep what you have so far. You can come back and finish it later.">Save as draft</button><span class="msg" id="draftMsg"></span><button class="primary" id="nextBtn">Next →</button></div>
+    </div>
+
+    <div class="card summary" id="summary">
+      <h2>Price summary</h2>
+      <div id="sumBody" class="hint">Enter the number of employees to see the price.</div>
+    </div>
+  </div>
+</div>
+
+<script src="shell.js"></script>
+<script src="doc.js"></script>
+<script>
+(function(){
+  var me = null, catalog = null, step = 1, quote = null, quoteErr = '', proposal = null; // proposal = {id, ref_no, status}
+  var customer = null; // {id, name, contacts}
+  var st = freshState();
+  function freshState(){ return { contact_id: null, validity: 30, input: { employees: '', adminSeats: 3, portalUsers: 0, items: [], extraStorageGB: 0, notifications: {sms:0, whatsapp:0, email:0, enabled:{sms:false, whatsapp:false, email:false}}, wdmsDevices: 0, implementation: { mode: 'own', amount: '', scope: '', milestones: null }, integrationHours: 0, customisations: [], billing: {type:'subscription', term:'monthly'}, discounts: [], style: 'standard', excluded: [] } }; }
+
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function money(n){ return '$' + (Number(n)||0).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+  function api(method, url, body){
+    return fetch(url, {method:method, headers:{'Content-Type':'application/json'}, body: body === undefined ? undefined : JSON.stringify(body)})
+      .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return {status:r.status, json:j}; }); });
+  }
+  function say(el, text, ok){ el.textContent = text; el.className = 'msg ' + (ok ? 'ok' : 'err'); }
+  function num(id){ var v = parseFloat($(id).value); return isFinite(v) && v >= 0 ? v : 0; }
+
+  // ---------------- steps ----------------
+  var STEP_NAMES = ['Customer', 'Scope', 'Commercials', 'Review'];
+  function renderSteps(){
+    $('steps').innerHTML = STEP_NAMES.map(function(n, i){ return '<button class="step' + (step === i + 1 ? ' active' : '') + (step > i + 1 ? ' done' : '') + '" data-step="' + (i + 1) + '"><b>' + (i + 1) + '</b>' + n + '</button>'; }).join('');
+    [1,2,3,4].forEach(function(i){ $('s' + i).hidden = step !== i; });
+    $('draftBtn').hidden = !!(proposal && proposal.status !== 'draft'); if ($('draftBtn').hidden) $('draftMsg').textContent = '';
+    $('backBtn').hidden = step === 1; $('nextBtn').hidden = step === 4;
+    $('summary').hidden = false;
+    if (step === 3) renderStyle();
+    if (step === 4) renderDoc();
+    validateNext();
+  }
+  function canEnter(n){
+    if (n >= 2 && !customer) return 'Choose or add a customer first.';
+    if (n >= 3 && !(parseInt(st.input.employees, 10) >= 1)) return 'Enter the number of employees first.';
+    if (n >= 4 && (quoteErr || !quote || quote.custom)) return quoteErr || (quote && quote.custom ? 'This company size needs a custom quote.' : 'Complete the scope first.');
+    return '';
+  }
+  function go(n){
+    readScope();
+    var why = canEnter(n);
+    if (why) { alert(why); return; }
+    step = n; renderSteps(); window.scrollTo(0, 0);
+  }
+  function validateNext(){ $('nextBtn').disabled = !!canEnter(step + 1); }
+  $('steps').addEventListener('click', function(e){ var b = e.target.closest('[data-step]'); if (b) go(+b.dataset.step); });
+  $('nextBtn').addEventListener('click', function(){ go(step + 1); });
+  $('backBtn').addEventListener('click', function(){ step = Math.max(1, step - 1); renderSteps(); });
+
+  // ---------------- step 1: customer ----------------
+  var qTimer;
+  function initials(n){ var w = String(n || '?').trim().split(/s+/); return ((w[0] || '?').charAt(0) + (w.length > 1 ? w[1].charAt(0) : '')).toUpperCase(); }
+  function searchCustomers(){
+    api('GET', '/api/customers?q=' + encodeURIComponent($('custQ').value)).then(function(r){
+      $('custList').innerHTML = (r.json || []).filter(function(c){ return c.active; }).slice(0, 8).map(function(c){
+        var k = c.primary_contact;
+        return '<div class="pick' + (customer && customer.id === c.id ? ' sel' : '') + '" data-cid="' + c.id + '"><i class="av">' + esc(initials(c.name)) + '</i><b>' + esc(c.name) + '</b><small>' + (k ? esc(k.name) + (k.email ? ' · ' + esc(k.email) : '') : 'no contact yet') + '</small></div>';
+      }).join('') || '<div class="hint">No matching customers.</div>';
+    });
+  }
+  $('custQ').addEventListener('input', function(){ clearTimeout(qTimer); qTimer = setTimeout(searchCustomers, 250); });
+  $('custList').addEventListener('click', function(e){ var p = e.target.closest('[data-cid]'); if (p) chooseCustomer(+p.dataset.cid); });
+  function chooseCustomer(id, contactId){
+    return api('GET', '/api/customers/' + id).then(function(r){
+      if (r.status !== 200) return;
+      customer = r.json;
+      $('chosen').hidden = false; $('chosenName').textContent = customer.name;
+      $('contactSel').innerHTML = '<option value="">No contact selected</option>' + customer.contacts.map(function(k){ return '<option value="' + k.id + '">' + esc(k.name) + (k.title ? ', ' + esc(k.title) : '') + (k.email ? ' — ' + esc(k.email) : '') + (k.is_primary ? ' (primary)' : '') + '</option>'; }).join('');
+      var pick = contactId || (customer.contacts.filter(function(k){ return k.is_primary; })[0] || {}).id || '';
+      $('contactSel').value = pick || ''; st.contact_id = pick || null;
+      searchCustomers(); validateNext();
+    });
+  }
+  $('contactSel').addEventListener('change', function(){ st.contact_id = this.value ? +this.value : null; });
+  $('custNewBtn').addEventListener('click', function(){ $('custNew').hidden = !$('custNew').hidden; });
+  $('ncSave').addEventListener('click', function(){
+    var body = { name: $('ncName').value, industry: $('ncIndustry').value };
+    if ($('ncContact').value || $('ncEmail').value) body.contact = { name: $('ncContact').value, title: $('ncTitle').value, email: $('ncEmail').value, phone: $('ncPhone').value };
+    api('POST', '/api/customers', body).then(function(r){
+      if (r.status === 201) { say($('ncMsg'), 'Saved', true); $('custNew').hidden = true; chooseCustomer(r.json.id); } else say($('ncMsg'), r.json.error || 'Failed', false);
+    });
+  });
+
+  // ---------------- step 2: scope ----------------
+  var DESC = PHDoc.DESC;
+  function renderScopeStatic(){
+    $('coreList').textContent = catalog.coreFeatures.join(' · ');
+    $('optGroups').innerHTML = catalog.groups.map(function(g){
+      return '<h3>' + esc(g.name) + '</h3><div class="optgrid">' + catalog.items.filter(function(i){ return i.group === g.id; }).map(function(i){
+        var on = st.input.items.indexOf(i.id) > -1;
+        return '<label class="opt' + (on ? ' on' : '') + '"><input type="checkbox" data-item="' + i.id + '"' + (on ? ' checked' : '') + '><span><b>' + esc(i.name) + '</b><small>' + esc(i.includes || DESC[i.id] || '') + '</small></span></label>';
+      }).join('') + '</div>';
+    }).join('');
+  }
+  $('optGroups').addEventListener('change', function(e){
+    var id = e.target.dataset.item; if (!id) return;
+    var a = st.input.items, i = a.indexOf(id);
+    if (e.target.checked && i < 0) a.push(id); if (!e.target.checked && i > -1) a.splice(i, 1);
+    e.target.closest('.opt').classList.toggle('on', e.target.checked);
+    refreshQuote();
+  });
+  function readScope(){
+    var i = st.input;
+    i.employees = $('employees').value === '' ? '' : parseInt($('employees').value, 10);
+    i.adminSeats = parseInt($('adminSeats').value, 10) || 0; i.portalUsers = parseInt($('portalUsers').value, 10) || 0;
+    i.extraStorageGB = num('extraStorageGB'); i.notifications = { sms: $('nSmsOn').checked ? parseInt($('nSms').value, 10) || 0 : 0, whatsapp: $('nWaOn').checked ? parseInt($('nWa').value, 10) || 0 : 0, email: $('nEmailOn').checked ? parseInt($('nEmail').value, 10) || 0 : 0, enabled: { sms: $('nSmsOn').checked, whatsapp: $('nWaOn').checked, email: $('nEmailOn').checked } };
+    i.wdmsDevices = parseInt($('wdmsDevices').value, 10) || 0;
+    i.implementation = readImpl();
+    i.integrationHours = num('intHours');
+    i.billing = { type: $('billType').value, term: $('billType').value === 'subscription' ? $('billTerm').value : 'monthly' };
+    st.validity = parseInt($('validity').value, 10) || 30;
+    i.validityDays = st.validity;
+  }
+  function writeScope(){
+    var i = st.input;
+    $('employees').value = i.employees; $('adminSeats').value = i.adminSeats; $('portalUsers').value = i.portalUsers;
+    $('extraStorageGB').value = i.extraStorageGB; var en = i.notifications.enabled || {}; $('nSmsOn').checked = en.sms === undefined ? i.notifications.sms > 0 : !!en.sms; $('nWaOn').checked = en.whatsapp === undefined ? i.notifications.whatsapp > 0 : !!en.whatsapp; $('nEmailOn').checked = en.email === undefined ? i.notifications.email > 0 : !!en.email;
+    $('nSms').value = i.notifications.sms; $('nWa').value = i.notifications.whatsapp; $('nEmail').value = i.notifications.email; $('wdmsDevices').value = i.wdmsDevices || 0; syncNotify(); writeImpl(i.implementation); $('intHours').value = i.integrationHours;
+    $('billType').value = i.billing.type; $('billTerm').value = i.billing.term; $('validity').value = st.validity;
+    $('termBox').hidden = i.billing.type !== 'subscription';
+    renderCustom(); renderDiscounts(); renderScopeStatic(); hints();
+  }
+  function hints(){
+    if ($("essWarn")) $("essWarn").hidden = !(st.input.items.indexOf("time") > -1 && !(st.input.portalUsers > 0));
+    var e = parseInt(st.input.employees, 10);
+    if (!(e >= 1) || !catalog) { $('bandHint').textContent = ''; $('seatHint').textContent = ''; $('storageHint').textContent = ''; return; }
+    var b = catalog.bands.filter(function(x){ return e >= x.min && (x.max === null || e <= x.max); })[0] || catalog.bands[catalog.bands.length - 1];
+    $('bandHint').textContent = 'Pricing band: ' + b.label; $('seatHint').textContent = b.seatsIncluded + ' seats included';
+    var free = (b.max === null ? e : b.max) * catalog.storage.freeMBPerEmployee / 1024;
+    $('storageHint').textContent = (Math.round(free * 10) / 10) + ' GB free pool; extra sold in ' + catalog.storage.blockGB + ' GB blocks';
+  }
+  $('portalSame').addEventListener('click', function(e){ e.preventDefault(); $('portalUsers').value = $('employees').value || 0; scopeChanged(); });
+
+  function renderCustom(){
+    $('customRows').innerHTML = st.input.customisations.map(function(c, i){
+      return '<div class="card" style="padding:10px" data-ci="' + i + '"><div class="row"><div><label class="f">What needs to be customised</label><input type="text" data-cf="title" value="' + esc(c.title) + '"></div>' +
+        '<div><label class="f">Hours</label><input type="number" data-cf="hours" min="0" value="' + (c.hours || 0) + '"></div><button class="link danger" data-cdel="' + i + '" style="margin-top:20px">Remove</button></div>' +
+        '<label class="f">Details</label><textarea data-cf="details">' + esc(c.details) + '</textarea></div>';
+    }).join('');
+  }
+  $('addCustom').addEventListener('click', function(){ st.input.customisations.push({ title: '', details: '', hours: 0 }); renderCustom(); });
+  $('customRows').addEventListener('input', function(e){
+    var card = e.target.closest('[data-ci]'); if (!card || !e.target.dataset.cf) return;
+    var c = st.input.customisations[+card.dataset.ci], f = e.target.dataset.cf;
+    c[f] = f === 'hours' ? (parseFloat(e.target.value) || 0) : e.target.value; refreshQuote();
+  });
+  $('customRows').addEventListener('click', function(e){ if (e.target.dataset.cdel !== undefined) { st.input.customisations.splice(+e.target.dataset.cdel, 1); renderCustom(); refreshQuote(); } });
+
+  // ---------------- step 3: commercials ----------------
+  function renderDiscounts(){
+    renderApproval();
+    $('capHint').textContent = catalog.partnerCategory ? 'Your ' + catalog.partnerCategory + ' category allows a maximum total discount of ' + catalog.maxDiscountPct + '%.' : 'Staff discounts are not capped; Core HR is never discounted.';
+    $('discRows').innerHTML = st.input.discounts.map(function(d, i){
+      return '<div class="row" data-di="' + i + '"><div><label class="f">Reason</label><input type="text" data-df="label" value="' + esc(d.label) + '" placeholder="e.g. Launch promotion"></div>' +
+        '<div><label class="f">%</label><input type="number" data-df="pct" min="0" max="100" step="0.5" value="' + (d.pct || 0) + '"></div><button class="link danger" data-ddel="' + i + '" style="margin-top:20px">Remove</button></div>';
+    }).join('');
+  }
+  // Asking Victory for more discount than the category allows
+  function renderApproval(){
+    var box = $('approvalBox');
+    if (!me || me.role !== 'partner' || !proposal || proposal.status !== 'draft') { box.hidden = true; return; }
+    box.hidden = false;
+    api('GET', '/api/proposals/' + proposal.id + '/discount-requests').then(function(r){
+      var reqs = (r.json && r.json.requests) || [], cap = r.json && r.json.cap, pending = reqs.filter(function(x){ return x.status === 'pending'; })[0];
+      var html = '<b>Need a bigger discount?</b><div class="hint" style="margin:2px 0 8px">Your limit on this proposal is ' + cap + '%. You can ask Victory for more.</div>';
+      html += reqs.map(function(x){
+        return '<div class="hint" style="margin:4px 0"><b>' + x.requested_pct + '%</b> asked · ' + (x.status === 'pending' ? 'waiting for a decision' : x.status === 'approved' ? '<span style="color:var(--good);font-weight:700">approved at ' + x.approved_pct + '%</span>' : '<span style="color:var(--danger);font-weight:700">declined</span>') + (x.decision_note ? ' — ' + esc(x.decision_note) : '') + '</div>';
+      }).join('');
+      if (!pending) html += '<div style="display:grid;grid-template-columns:110px 1fr auto;gap:8px;margin-top:8px"><input type="number" id="apPct" min="1" max="100" step="0.5" placeholder="Discount %"><input type="text" id="apWhy" maxlength="500" placeholder="Why does the client need this?"><button id="apSend">Ask for approval</button></div><span class="msg" id="apMsg"></span>';
+      box.innerHTML = html;
+    });
+  }
+  $('approvalBox').addEventListener('click', function(e){
+    if (e.target.id !== 'apSend') return;
+    api('POST', '/api/proposals/' + proposal.id + '/discount-requests', { pct: parseFloat($('apPct').value), reason: $('apWhy').value }).then(function(r){
+      if (r.status === 201) renderApproval(); else say($('apMsg'), r.json.error || 'Could not send the request', false);
+    });
+  });
+  $('addDisc').addEventListener('click', function(){ st.input.discounts.push({ label: '', pct: 0 }); renderDiscounts(); });
+  $('discRows').addEventListener('input', function(e){
+    var row = e.target.closest('[data-di]'); if (!row || !e.target.dataset.df) return;
+    var d = st.input.discounts[+row.dataset.di], f = e.target.dataset.df;
+    d[f] = f === 'pct' ? (parseFloat(e.target.value) || 0) : e.target.value; refreshQuote();
+  });
+  $('discRows').addEventListener('click', function(e){ if (e.target.dataset.ddel !== undefined) { st.input.discounts.splice(+e.target.dataset.ddel, 1); renderDiscounts(); refreshQuote(); } });
+  $('billType').addEventListener('change', function(){ $('termBox').hidden = this.value !== 'subscription'; scopeChanged(); });
+
+  // ---------------- live price (always computed by the server) ----------------
+  var qt, seq = 0;
+  function scopeChanged(){ readScope(); hints(); refreshQuote(); }
+  ['employees','adminSeats','portalUsers','extraStorageGB','nSms','nWa','nEmail','nSmsOn','nWaOn','nEmailOn','wdmsDevices','intHours','billTerm','validity'].forEach(function(id){ $(id).addEventListener('input', scopeChanged); $(id).addEventListener('change', scopeChanged); });
+  function syncNotify(){ [['nSms','nSmsOn'],['nWa','nWaOn'],['nEmail','nEmailOn']].forEach(function(p){ $(p[0]).disabled = !$(p[1]).checked; }); }
+  ['nSmsOn','nWaOn','nEmailOn'].forEach(function(id){ $(id).addEventListener('change', syncNotify); });
+  function refreshQuote(){
+    clearTimeout(qt);
+    qt = setTimeout(function(){
+      var my = ++seq;
+      if (!(parseInt(st.input.employees, 10) >= 1)) { quote = null; quoteErr = ''; renderSummary(); validateNext(); return; }
+      api('POST', '/api/quote', Object.assign({ proposal_id: proposal ? proposal.id : undefined }, st.input)).then(function(r){
+        if (my !== seq) return;
+        if (r.status === 200) { quote = r.json.quote; quoteErr = ''; } else { quote = null; quoteErr = r.json.error || 'Could not price this quote'; }
+        renderSummary(); validateNext(); if (step === 4) renderDoc();
+      });
+    }, 250);
+  }
+  function renderSummary(){
+    renderImpl();
+    if (quoteErr) { $('sumBody').innerHTML = '<div class="err">' + esc(quoteErr) + '</div>'; return; }
+    if (!quote) { $('sumBody').innerHTML = 'Enter the number of employees to see the price.'; return; }
+    if (quote.custom) { $('sumBody').innerHTML = '<div class="note">This company size (' + esc(quote.band.label) + ') needs a custom quote. Please contact Victory Information.</div>'; return; }
+    var html = '<div class="hero"><small>Monthly subscription</small><b>' + money(quote.monthlyRecurring) + '</b><span>Due at signing ' + money(quote.dueAtSigning) + ' · Band ' + esc(quote.band.label) + '</span></div>';
+    html += quote.lines.filter(function(l){ return !l.oneTime; }).map(function(l){ return '<div class="line"><span>' + esc(l.label) + '<small>' + esc(l.detail) + '</small></span><span>' + money(l.amount) + '</span></div>'; }).join('');
+    if (quote.discountMonthly > 0) html += '<div class="line"><span>Discount (' + quote.discountPct + '%)</span><span>−' + money(quote.discountMonthly) + '</span></div>';
+    html += '<div class="line total"><span>Monthly</span><span>' + money(quote.monthlyRecurring) + '</span></div>';
+    var once = quote.lines.filter(function(l){ return l.oneTime; });
+    if (once.length) { html += '<h3>One-time</h3>' + once.map(function(l){ return '<div class="line"><span>' + esc(l.label) + '<small>' + esc(l.detail) + '</small></span><span>' + money(l.amount) + '</span></div>'; }).join('');
+      if (quote.discountOnce > 0) html += '<div class="line"><span>Discount</span><span>−' + money(quote.discountOnce) + '</span></div>';
+      html += '<div class="line total"><span>One-time total</span><span>' + money(quote.oneTime) + '</span></div>'; }
+    html += '<div class="line total"><span>Due at signing</span><span>' + money(quote.dueAtSigning) + '</span></div>';
+    if (quote.billing.type === 'perpetual') html += '<div class="hint">Licence ' + money(quote.billing.licence) + ' · annual maintenance ' + money(quote.billing.maintenanceAnnual) + '</div>';
+    $('sumBody').innerHTML = html;
+  }
+  // ---- implementation: the partner sets the fee; the price list only suggests one
+  function msRows(ms){
+    var rows = (ms && ms.length ? ms : []).slice(0, 4), h = '';
+    for (var k = 0; k < 4; k++) { var m = rows[k] || {}; h += '<div class="msRow" style="display:flex;gap:8px;margin-bottom:6px;align-items:center"><input type="text" class="msL" maxlength="40" placeholder="When (for example On signing)" value="' + esc(m.label || '') + '" style="flex:1"><input type="number" class="msP" min="0" max="100" step="1" placeholder="%" value="' + (m.pct != null ? m.pct : '') + '" style="width:90px"> %</div>'; }
+    $('implMs').innerHTML = h;
+  }
+  function readImpl(){
+    var ms = [];
+    document.querySelectorAll('#implMs .msRow').forEach(function(r){ var p = parseFloat(r.querySelector('.msP').value), l = r.querySelector('.msL').value.trim(); if (p > 0) ms.push({ label: l || 'Payment', pct: p }); });
+    var amt = $('implAmount').value;
+    return { mode: $('implMode').value, amount: amt === '' ? '' : (parseFloat(amt) || 0), scope: $('implScope').value, milestones: ms.length ? ms : null };
+  }
+  function writeImpl(x){
+    x = x || { mode: 'own', amount: '', scope: '', milestones: null };
+    $('implMode').value = x.mode || 'own'; $('implAmount').value = x.amount === 0 ? '' : (x.amount == null ? '' : x.amount); $('implScope').value = x.scope || '';
+    msRows(x.milestones);
+  }
+  function renderImpl(){
+    var el = $('implBody'); if (!el) return;
+    var staff = me && (me.role === 'admin' || me.role === 'staff'), mode = $('implMode').value;
+    $('implAmtBox').hidden = mode === 'agreed'; $('implMore').hidden = mode === 'agreed' && false;
+    $('implAmount').disabled = mode === 'guideline';
+    if (!quote || quote.custom) { el.textContent = 'Enter the number of employees and choose modules to see the guideline.'; return; }
+    var g = quote.implementationGuideline, h = '';
+    if (g && g.total > 0) {
+      h += 'Guideline for this company size and these modules: <b>' + money(g.total) + '</b> (base ' + money(g.base) + (g.modules.length ? ', plus ' + g.modules.map(function(m){ return esc(m.name) + ' ' + money(m.amount); }).join(', ') : '') + '). ' + (mode === 'own' ? '<button type="button" id="implUse">Use this amount</button>' : '');
+    } else h += 'No guideline is set in the price list' + (staff ? ' (<a href="price-editor.html">Price editor, Implementation guideline</a>)' : '') + '.';
+    if (mode === 'agreed') h += '<br>No amount will be shown. The proposal says implementation will be quoted once the scope is confirmed.';
+    else if (quote.implementation) h += '<br>Payment: ' + quote.implementation.schedule.map(function(m){ return esc(m.label) + ' ' + money(m.amount); }).join(', ') + '.';
+    else if (mode === 'own') h += '<br>Enter a fee above, or leave it empty to quote the implementation later.';
+    if (staff && quote.implementationLow) h += '<br><b style="color:var(--warn-fg)">This fee is less than half of the guideline.</b>';
+    el.innerHTML = h;
+    // when the payment rows are empty, offer the standard split from the price list
+    var rows = document.querySelectorAll('#implMs .msRow'), empty = true;
+    rows.forEach(function(r){ if (r.querySelector('.msP').value !== '') empty = false; });
+    if (empty && quote.implementationMilestones && !$('implMs').contains(document.activeElement)) msRows(quote.implementationMilestones);
+  }
+  document.addEventListener('click', function(e){
+    if (e.target && e.target.id === 'implUse' && quote && quote.implementationGuideline) { $('implAmount').value = quote.implementationGuideline.total; scopeChanged(); }
+  });
+  ['implMode','implAmount','implScope'].forEach(function(id){ $(id).addEventListener('input', scopeChanged); $(id).addEventListener('change', scopeChanged); });
+  $('implMs').addEventListener('input', scopeChanged);
+
+  // ---------------- step 4: the proposal document ----------------
+  function renderDoc(){
+    if (!quote || quote.custom || !customer) { $('docWrap').innerHTML = '<div class="pg"><p>Complete the earlier steps to see the proposal.</p></div>'; return; }
+    var c = (customer.contacts.filter(function(k){ return k.id === st.contact_id; })[0]) || null;
+    $('refLabel').textContent = proposal ? proposal.ref_no + ' · ' + proposal.status : '';
+    $('docWrap').innerHTML = PHDoc.html({
+      quote: quote, input: st.input, validity: st.validity,
+      customer: { name: customer.name, sites: customer.sites, current_system: customer.current_system },
+      contact: c ? { name: c.name, title: c.title, email: c.email } : null,
+      ref: proposal ? proposal.ref_no : '(assigned when saved)', createdAt: proposal && proposal.created_at ? proposal.created_at : Date.now(),
+      catalog: catalog, presentedBy: me.partner ? me.partner.company : (proposal && proposal.partner_name) || '',
+      acceptance: proposal && proposal.acceptance ? { name: proposal.acceptance.signer_name, title: proposal.acceptance.signer_title, at: proposal.acceptance.accepted_at, ref: String(proposal.acceptance.proposal_hash).slice(0, 12) } : null,
+      logo: proposal && proposal.logo || (me.partner && me.partner.logo) || null,
+      doc: curDoc()
+    });
+    $('sentBtn').hidden = !(proposal && proposal.status === 'draft');
+    renderPipeline();
+  }
+
+  // ---------------- save / pdf / status ----------------
+  $('saveBtn').addEventListener('click', function(){
+    readScope();
+    var body = { customer_id: customer.id, contact_id: st.contact_id, input: st.input };
+    var req = proposal ? api('PUT', '/api/proposals/' + proposal.id, body) : api('POST', '/api/proposals', body);
+    req.then(function(r){
+      if (r.status === 201) { proposal = { id: r.json.id, ref_no: r.json.ref_no, status: 'draft', created_at: new Date().toISOString() }; say($('saveMsg'), 'Saved as ' + r.json.ref_no, true); renderDoc(); api('GET', '/api/proposals/' + r.json.id).then(function(d){ if (d.status === 200 && proposal && proposal.id === d.json.id) { proposal.logo = d.json.partner_logo; proposal.partner_name = d.json.partner_name; renderDoc(); } }); }
+      else if (r.status === 200) { say($('saveMsg'), 'Saved', true); renderDoc(); }
+      else say($('saveMsg'), r.json.error || 'Could not save', false);
+    });
+  });
+  $('draftBtn').addEventListener('click', function(){
+    readScope();
+    var msg = $('draftMsg');
+    if (!customer) { say(msg, 'Choose a customer in step 1 first, then save the draft.', false); return; }
+    if (proposal && proposal.status !== 'draft') { say(msg, 'This proposal was already sent. Use Edit (creates new version) to change it.', false); return; }
+    var body = { customer_id: customer.id, contact_id: st.contact_id, input: st.input, draft: true };
+    var req = proposal ? api('PUT', '/api/proposals/' + proposal.id, body) : api('POST', '/api/proposals', body);
+    req.then(function(r){
+      if (r.status !== 200 && r.status !== 201) { say(msg, r.json.error || 'Could not save the draft', false); return; }
+      if (r.status === 201) { proposal = { id: r.json.id, ref_no: r.json.ref_no, status: 'draft', created_at: new Date().toISOString() }; }
+      $('refLabel').textContent = proposal.ref_no + ' · draft';
+      say(msg, 'Draft saved as ' + proposal.ref_no + (r.json.incomplete ? ' (incomplete: finish it before sending)' : ''), true);
+      renderPipeline(); if (window.PHShell) PHShell.refresh(me);
+    });
+  });
+  $('pdfBtn').addEventListener('click', function(){
+    if (!proposal) { if (confirm('This proposal has not been saved yet, so it has no reference number. Print anyway?')) window.print(); return; }
+    // The PDF is made on the server from the saved proposal, so save any changes first (sent proposals are already final)
+    function download(){ say($('saveMsg'), 'Preparing PDF…', true); window.location = '/api/proposals/' + proposal.id + '/pdf'; setTimeout(function(){ $('saveMsg').textContent = ''; }, 4000); }
+    if (proposal.status !== 'draft') return download();
+    readScope();
+    api('PUT', '/api/proposals/' + proposal.id, { customer_id: customer.id, contact_id: st.contact_id, input: st.input }).then(function(r){
+      if (r.status === 200) download(); else say($('saveMsg'), r.json.error || 'Could not save before creating the PDF', false);
+    });
+  });
+  $('sentBtn').addEventListener('click', function(){
+    if (!proposal || !confirm('Mark ' + proposal.ref_no + ' as sent? A sent proposal can no longer be edited.')) return;
+    api('PUT', '/api/proposals/' + proposal.id + '/status', { status: 'sent' }).then(function(r){ if (r.status === 200) { proposal.status = 'sent'; say($('saveMsg'), 'Marked as sent', true); renderDoc(); $('saveBtn').disabled = true; } });
+  });
+
+  // ---------------- proposal style and sections ----------------
+  var library = null;
+  // The wording to print: what was saved with a sent proposal (or any proposal being printed), otherwise the live library
+  function curDoc(){
+    if (proposal && (proposal.status !== 'draft' || proposal.printMode) && proposal.doc !== undefined) return proposal.doc;
+    if (!library) return null;
+    return { style: st.input.style || 'standard', excluded: st.input.excluded || [], sections: library.sections, pillars: library.pillars };
+  }
+  function renderStyle(){
+    if (!library || !$('styleOpts')) return;
+    var cur = st.input.style || 'standard', ex = st.input.excluded || [];
+    $('styleOpts').innerHTML = library.styles.map(function(s){
+      return '<label class="opt' + (cur === s.id ? ' on' : '') + '"><input type="radio" name="pstyle" value="' + s.id + '"' + (cur === s.id ? ' checked' : '') + '><span><b>' + esc(s.name) + '</b><small>' + esc(s.blurb) + '</small></span></label>';
+    }).join('');
+    $('secOpts').innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:2px 16px">' + library.sections.filter(function(x){ return x.styles.indexOf(cur) > -1; }).map(function(x){
+      var on = x.required || ex.indexOf(x.key) < 0;
+      return '<label style="display:flex;gap:8px;align-items:center;margin:4px 0;font-weight:500;color:var(--text);cursor:pointer"><input type="checkbox" data-sec="' + x.key + '"' + (on ? ' checked' : '') + (x.required ? ' disabled' : '') + '> ' + esc(x.title) + (x.required ? ' <span class="hint" style="margin:0">· always</span>' : '') + '</label>';
+    }).join('') + '</div>';
+  }
+  $('styleOpts').addEventListener('change', function(e){ if (e.target.name === 'pstyle') { st.input.style = e.target.value; renderStyle(); refreshQuote(); } });
+  $('secOpts').addEventListener('change', function(e){
+    var k = e.target.dataset.sec; if (!k) return;
+    var ex = st.input.excluded = (st.input.excluded || []).filter(function(x){ return x !== k; });
+    if (!e.target.checked) ex.push(k);
+    refreshQuote();
+  });
+
+  // ---------------- pipeline, revisions, history ----------------
+  var MOVES = { sent: [['negotiating', 'Negotiating'], ['accepted', 'Accepted'], ['lost', 'Lost']], viewed: [['negotiating', 'Negotiating'], ['accepted', 'Accepted'], ['lost', 'Lost']], negotiating: [['accepted', 'Accepted'], ['lost', 'Lost']], accepted: [['negotiating', 'Reopen']], lost: [['negotiating', 'Reopen']] };
+  var EVT = { created: 'Created', emailed: 'Emailed', status: 'Status' };
+  function renderPipeline(){
+    if (!proposal) { $('pipeline').hidden = true; return; }
+    $('pipeline').hidden = false; $('draftBtn').hidden = proposal.status !== 'draft';
+    $('stPill').textContent = proposal.status; $('stPill').className = 'stp ' + proposal.status;
+    var acts = (MOVES[proposal.status] || []).map(function(m){ return '<button data-move="' + m[0] + '">' + (m[1] === 'Reopen' ? '' : 'Mark ') + m[1] + '</button>'; }).join(' ');
+    if (['sent', 'viewed', 'negotiating', 'lost'].indexOf(proposal.status) > -1) acts += ' <button data-resend="1">Resend / add recipients</button> <button class="primary" data-revise="1" title="A sent proposal is locked. This makes a new editable copy (next version) and marks this one as replaced.">Edit (creates new version)</button>';
+    $('stActions').innerHTML = acts;
+    renderActivity();
+    var id = proposal.id; loadEmailHistory();
+    if (proposal.status === 'draft') $('verBox').innerHTML = '';
+    api('GET', '/api/proposals/' + id + '/versions').then(function(r){
+      var v = r.json || [];
+      var note = proposal.status === 'draft' ? '' : '<div style="margin-top:4px">This proposal is locked because the client has seen it. To change it, press <b>Edit (creates new version)</b>: you get a new editable draft, and the old one stays as the record of what was sent.</div>';
+      $('verBox').innerHTML = (v.length > 1 ? '<b>Versions:</b> ' + v.map(function(x){ return x.id === id ? '<a class="cur">v' + x.version + ' (this) · ' + esc(x.status) + '</a>' : '<a href="proposal.html?open=' + x.id + '">v' + x.version + ' · ' + esc(x.status) + '</a>'; }).join(' → ') : '') + note;
+    });
+    api('GET', '/api/proposals/' + id + '/timeline').then(function(r){
+      $('timeline').innerHTML = '<div class="tl">' + (r.json || []).map(function(e){
+        var what = e.type === 'status' ? 'Status: ' + e.from_status + ' → ' + e.to_status : (EVT[e.type] || e.type) + (e.type === 'emailed' && e.note ? ' to ' + e.note : '');
+        return '<span>' + new Date(e.created_at).toLocaleString() + '</span><span><b>' + esc(what) + '</b>' + (e.type !== 'emailed' && e.note ? ' — ' + esc(e.note) : '') + (e.by_user ? ' <small>(' + esc(e.by_user) + ')</small>' : '') + '</span>';
+      }).join('') + '</div>';
+    });
+  }
+  function secs(n){ n = +n || 0; return n < 60 ? n + 's' : Math.floor(n / 60) + 'm ' + (n % 60) + 's'; }
+  // Who opened it, who downloaded the PDF, and what happened last
+  function peopleHtml(a){
+    var ps = a.people || [], ev = a.recent || [];
+    if (!ps.length && !ev.length) return '';
+    var lbl = { engaged: 'opened the proposal', pdf: 'downloaded the PDF', cta: 'asked to talk' };
+    var t = '<h4 style="margin:14px 0 6px">By person</h4><div class="table-wrap"><table><thead><tr><th>Person</th><th>Status</th><th>Reading</th><th>PDF downloads</th><th>Last seen</th></tr></thead><tbody>' + ps.map(function(x){
+      var st = x.visits || x.pdfs ? 'Opened' + (x.visits > 1 ? ' (' + x.visits + ' visits)' : '') : (x.delivered === false ? 'Delivery failed' : 'Not opened yet');
+      return '<tr><td>' + (x.who ? esc(x.who) : '<i>Shared link</i>') + '</td><td>' + st + '</td><td>' + (x.visits || x.pdfs ? secs(x.seconds) : '') + '</td><td>' + (x.pdfs || 0) + '</td><td>' + (x.last_view ? esc(new Date(x.last_view).toLocaleString()) : (x.sentAt ? '<span class="hint">sent ' + esc(new Date(x.sentAt).toLocaleString()) + '</span>' : '')) + '</td></tr>';
+    }).join('') + '</tbody></table></div>';
+    if (ev.length) t += '<h4 style="margin:14px 0 6px">Latest events</h4><ul style="margin:0;padding-left:18px">' + ev.slice(0, 10).map(function(e){ return '<li><span class="hint">' + esc(new Date(e.created_at).toLocaleString()) + '</span> ' + (e.recipient ? '<b>' + esc(e.recipient) + '</b>' : 'Someone on the shared link') + ' ' + (lbl[e.type] || e.type) + (e.device ? ' <span class="hint">(' + esc(e.device) + ')</span>' : '') + '</li>'; }).join('') + '</ul>';
+    return t;
+  }
+  function renderActivity(){
+    var box = $('activity');
+    if (!proposal || proposal.status === 'draft') { box.innerHTML = ''; return; }
+    var id = proposal.id;
+    Promise.all([api('GET', '/api/proposals/' + id + '/analytics'), api('POST', '/api/proposals/' + id + '/link')]).then(function(rs){
+      if (!proposal || proposal.id !== id) return;
+      var a = rs[0].json, link = rs[1].json, s = a.stats || {}, it = a.interest || {};
+      var secLabel = { cover: 'Cover', summary: 'Summary', scope: 'Scope', custom: 'Customisation', invest: 'Pricing', terms: 'Terms' };
+      var html = '<div class="act"><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><b>Client activity</b><span class="int ' + esc(it.label) + '">' + esc(it.label) + (it.score != null ? ' · ' + it.score : '') + '</span>' +
+        '<span class="hint" style="margin:0">' + (s.visitors ? 'Last viewed ' + new Date(s.last_view).toLocaleString() : 'Not opened yet') + '</span></div>' +
+        '<div class="kp"><div><small>People</small><b>' + (s.visitors || 0) + '</b></div><div><small>Visits</small><b>' + (s.visits || 0) + '</b></div><div><small>Time reading</small><b>' + secs(s.seconds) + '</b></div><div><small>PDF downloads</small><b>' + (s.pdfs || 0) + '</b></div><div><small>Asked to talk</small><b>' + (s.ctas || 0) + '</b></div></div>' +
+        peopleHtml(a) +
+        (s.sections && s.sections.length ? '<div class="hint">Read: ' + s.sections.map(function(x){ return esc(secLabel[x] || x); }).join(', ') + '</div>' : '') +
+        ((it.reasons || []).length ? '<ul>' + it.reasons.map(function(x){ return '<li>' + esc(x.text) + (x.points ? ' <b class="' + (x.points < 0 ? 'neg' : '') + '">' + (x.points > 0 ? '+' : '') + x.points + '</b>' : '') + '</li>'; }).join('') + '</ul>' : '') +
+        (a.scannerOpensIgnored ? '<div class="hint" style="margin-top:6px">' + a.scannerOpensIgnored + ' automatic opens by email scanners were ignored.</div>' : '') +
+        (a.internalOpens ? '<div class="note" style="margin:10px 0 0"><b>' + a.internalOpens + ' visit' + (a.internalOpens === 1 ? '' : 's') + ' from you or a colleague were not counted</b>, because you were signed in to this tool. To test the tracking, open the link in a private window, or sign out first. A real client is never signed in, so their visits count.</div>' : '') +
+        (!s.visitors && !a.internalOpens ? '<div class="hint" style="margin-top:6px">Only the online link is tracked. Opening the email or the PDF attachment cannot be seen, so the client has to click <b>View your proposal online</b>.</div>' : '') +
+        (link && link.url ? '<div class="lnk"><input type="text" readonly id="lnkUrl" value="' + esc(link.url) + '"><button id="lnkCopy">Copy link</button></div><div class="hint">Anyone with this link can read the proposal until ' + new Date(link.expiresAt).toLocaleDateString() + '.</div>' : '') + '</div>';
+      box.innerHTML = html;
+    });
+  }
+  // Keep the activity and the delivery log up to date while the page is open
+  setInterval(function(){
+    if (document.hidden || !proposal || proposal.status === 'draft' || proposal.printMode) return;
+    var f = document.activeElement; if (f && f.id === 'lnkUrl') return;
+    renderActivity(); loadEmailHistory();
+  }, 15000);
+  $('activity').addEventListener('click', function(e){
+    if (e.target.id !== 'lnkCopy') return;
+    var i = $('lnkUrl'); i.select();
+    try { navigator.clipboard.writeText(i.value); } catch (x) { document.execCommand('copy'); }
+    e.target.textContent = 'Copied';
+  });
+  $('stActions').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b || !proposal) return;
+    if (b.dataset.resend) { $('emailBtn').click(); $('emailForm').scrollIntoView({ block: 'center' }); return; }
+    if (b.dataset.revise) {
+      if (!confirm('Create a new revision of ' + proposal.ref_no + '? The current version is kept for history and marked as replaced.')) return;
+      api('POST', '/api/proposals/' + proposal.id + '/revise').then(function(r){
+        if (r.status === 201) { location.href = 'proposal.html?open=' + r.json.id; } else say($('saveMsg'), r.json.error || 'Could not create a revision', false);
+      });
+      return;
+    }
+    var to = b.dataset.move, body = { status: to };
+    if (to === 'lost') { var why = prompt('Why was this proposal lost? (price, competitor, timing, no budget, ...)'); if (why === null) return; body.reason = why; }
+    api('PUT', '/api/proposals/' + proposal.id + '/status', body).then(function(r){
+      if (r.status === 200) { proposal.status = to; $('refLabel').textContent = proposal.ref_no + ' · ' + to; renderDoc(); }
+      else say($('saveMsg'), r.json.error || 'Could not change the status', false);
+    });
+  });
+
+  // ---------------- email ----------------
+  function loadEmailHistory(){
+    if (!proposal) return;
+    api('GET', '/api/proposals/' + proposal.id + '/emails').then(function(r){
+      var rows = r.json || [];
+      $('mHistory').innerHTML = rows.length ? '<b>Delivery log</b>' + rows.map(function(e){
+        var chip = !e.ok ? '<span class="stp" style="background:var(--bad-bg);color:var(--bad-fg)">Delivery failed</span>' : e.opened ? '<span class="stp" style="background:var(--ok-bg);color:var(--ok-fg)">Received and opened</span>' : '<span class="stp">Accepted by mail service</span>';
+        return '<div style="margin-top:6px">' + chip + ' ' + esc(e.to_email) + (e.role === 'cc' ? ' (extra)' : '') + (e.resend ? ' · resend' : '') + ' <span class="hint">' + esc(new Date(e.created_at).toLocaleString()) + (e.ok ? '' : ' - ' + esc(e.error || '')) + (e.opened_at ? ' · opened ' + esc(new Date(e.opened_at).toLocaleString()) : '') + '</span></div>';
+      }).join('') : '';
+    });
+  }
+  // ---- email composer: formatting, options, extra files, preview
+  var attached = [];
+  function mailOptions(){ return { includeSummary: $('mOptSummary').checked, includeLink: $('mOptLink').checked, attachPdf: $('mOptPdf').checked }; }
+  function drawFiles(){
+    $('mFiles').innerHTML = attached.map(function(f, k){ return esc(f.name) + ' (' + Math.max(1, Math.round(f.size / 1024)) + ' KB) <a href="#" data-rm="' + k + '">remove</a>'; }).join('<br>');
+  }
+  function loadFiles(){ attached = []; drawFiles(); if (!proposal) return; api('GET', '/api/proposals/' + proposal.id + '/attachments').then(function(r){ attached = r.status === 200 ? r.json : []; drawFiles(); }); }
+  $('mFiles').addEventListener('click', function(e){
+    var a = e.target.closest('[data-rm]'); if (!a) return; e.preventDefault();
+    var f = attached[+a.dataset.rm]; if (!f) return;
+    api('DELETE', '/api/proposals/' + proposal.id + '/attachments/' + f.id).then(function(){ attached.splice(+a.dataset.rm, 1); drawFiles(); });
+  });
+  $('mFile').addEventListener('change', function(e){
+    var files = Array.prototype.slice.call(e.target.files); e.target.value = '';
+    files.reduce(function(chain, file){
+      return chain.then(function(){ return new Promise(function(done){
+        if (file.size > 5 * 1024 * 1024) { say($('mMsg'), file.name + ' is over 5 MB', false); return done(); }
+        var fr = new FileReader();
+        fr.onload = function(){ api('POST', '/api/proposals/' + proposal.id + '/attachments', { name: file.name, data: fr.result }).then(function(r){
+          if (r.status === 201) { attached.push(r.json); drawFiles(); $('mMsg').textContent = ''; } else say($('mMsg'), file.name + ': ' + (r.json.error || 'could not attach'), false); done(); }); };
+        fr.readAsDataURL(file);
+      }); });
+    }, Promise.resolve());
+  });
+  function mw(ta, pre, post, ph){ var a = ta.selectionStart, b = ta.selectionEnd, sel = ta.value.slice(a, b) || ph; ta.setRangeText(pre + sel + post, a, b, 'select'); ta.focus(); }
+  function mline(ta, mark){ var s0 = ta.value.lastIndexOf('\n', ta.selectionStart - 1) + 1; ta.setRangeText(mark, s0, s0, 'end'); ta.focus(); }
+  document.querySelector('.mtb').addEventListener('click', function(e){
+    var b = e.target.closest('[data-mf]'); if (!b) return; var ta = $('mBody');
+    if (b.dataset.mf === 'b') mw(ta, '**', '**', 'bold text');
+    if (b.dataset.mf === 'h') mline(ta, '## ');
+    if (b.dataset.mf === 'li') mline(ta, '- ');
+    if (b.dataset.mf === 'a') { var u = prompt('Web address (starting with https://)'); if (u && /^https?:\/\//.test(u)) mw(ta, '[', '](' + u.trim() + ')', 'link text'); else if (u) alert('The address must start with http:// or https://'); }
+    if (b.dataset.mf === 'img') $('mImgFile').click();
+  });
+  $('mImgFile').addEventListener('change', function(e){
+    var file = e.target.files[0]; e.target.value = ''; if (!file) return;
+    if (file.size > 400 * 1024) { alert('That picture is over 400 KB. Please use a smaller one.'); return; }
+    var fr = new FileReader();
+    fr.onload = function(){ api('POST', '/api/images', { name: file.name, data: fr.result }).then(function(r){
+      if (r.status !== 201) { alert(r.json.error || 'Could not upload the picture'); return; }
+      var cap = (prompt('Caption under the picture (optional)', '') || '').replace(/[\[\]\n]/g, ' ');
+      var ta = $('mBody'), pre = ta.value && !/\n\n$/.test(ta.value) ? '\n\n' : '';
+      ta.setRangeText(pre + '![' + cap + '](img:' + r.json.id + ')\n\n', ta.selectionStart, ta.selectionEnd, 'end');
+    }); };
+    fr.readAsDataURL(file);
+  });
+  $('mPreview').addEventListener('click', function(){
+    api('POST', '/api/proposals/' + proposal.id + '/email-preview', { message: $('mBody').value, options: mailOptions() }).then(function(r){
+      if (r.status === 200) { $('mPrev').hidden = false; $('mPrev').srcdoc = r.json.html; } else say($('mMsg'), r.json.error || 'Could not build the preview', false);
+    });
+  });
+  $('emailBtn').addEventListener('click', function(){
+    if (!proposal) { say($('saveMsg'), 'Save the proposal first', false); return; }
+    var c = customer && customer.contacts.filter(function(k){ return k.id === st.contact_id; })[0];
+    $('mTo').value = (c && c.email) || '';
+    $('mCc').value = ''; $('mSend').textContent = proposal.status === 'draft' ? 'Send email' : 'Resend email'; $('mSubject').value = (proposal.status === 'draft' ? '' : 'Re: ') + 'Proposal ' + proposal.ref_no + ' - PeopleHub HRIS for ' + (customer ? customer.name : '');
+    $('mBody').value = 'Dear ' + ((c && c.name) || 'Sir/Madam') + ',\n\nThank you for your interest in PeopleHub HRIS. Please find our proposal summary below. I would be glad to walk you through the full proposal.\n\nKind regards';
+    $('mMsg').textContent = ''; $('mPrev').hidden = true; $('emailForm').hidden = false; loadEmailHistory(); loadFiles();
+  });
+  $('mCancel').addEventListener('click', function(){ $('emailForm').hidden = true; });
+  $('mSend').addEventListener('click', function(){
+    if (!confirm((proposal.status === 'draft' ? 'Send' : 'Resend') + ' this proposal to ' + $('mTo').value + ($('mCc').value.trim() ? ' and ' + $('mCc').value : '') + '?')) return;
+    $('mSend').disabled = true;
+    api('POST', '/api/proposals/' + proposal.id + '/send', { to: $('mTo').value, cc: $('mCc').value, subject: $('mSubject').value, message: $('mBody').value, options: mailOptions(), attachmentIds: attached.map(function(f){ return f.id; }) }).then(function(r){
+      $('mSend').disabled = false;
+      if (r.status === 200) { proposal.status = r.json.status; var bad = (r.json.results || []).filter(function(x){ return !x.ok; }); say($('mMsg'), bad.length ? 'Sent, but failed for: ' + bad.map(function(x){ return x.to; }).join(', ') : 'Email sent', !bad.length); $('sentBtn').hidden = true; $('saveBtn').disabled = proposal.status !== 'draft'; $('refLabel').textContent = proposal.ref_no + ' · ' + proposal.status; loadEmailHistory(); renderPipeline(); }
+      else say($('mMsg'), r.json.error || 'Could not send', false);
+    }).catch(function(){ $('mSend').disabled = false; say($('mMsg'), 'Cannot reach the server', false); });
+  });
+
+  // ---------------- proposals list / reopen ----------------
+  $('listBtn').addEventListener('click', function(){
+    location.href = 'proposals.html'; return;
+    $('listCard').hidden = !$('listCard').hidden;
+    if ($('listCard').hidden) return;
+    api('GET', '/api/proposals').then(function(r){
+      $('listTable').innerHTML = (r.json || []).map(function(p){
+        return '<tr><td><a href="#" data-open="' + p.id + '">' + esc(p.ref_no) + '</a></td><td>' + esc(p.customer_name) + '</td><td>' + esc(p.status) + '</td><td>' + (p.monthly ? money(p.monthly) + '/mo' : '') + '</td><td class="hint">' + esc(p.partner_name || '') + '</td></tr>';
+      }).join('') || '<tr><td class="hint">No proposals yet.</td></tr>';
+    });
+  });
+  $('listTable').addEventListener('click', function(e){
+    var a = e.target.closest('[data-open]'); if (!a) return; e.preventDefault();
+    openProposal(a.dataset.open, false);
+  });
+  // printMode is used by the server when it renders the PDF: show the saved figures as they were, no re-pricing
+  function openProposal(id, printMode, goStep){
+    return api('GET', '/api/proposals/' + id).then(function(r){
+      if (r.status !== 200) return;
+      var p = r.json;
+      proposal = { id: p.id, ref_no: p.ref_no, status: p.status, created_at: p.created_at, version: p.version, acceptance: p.acceptance, logo: p.partner_logo, partner_name: p.partner_name, doc: p.doc, printMode: !!printMode };
+      $('refLabel').textContent = p.ref_no + ' · ' + p.status;
+      st = freshState(); st.input = p.selections; st.validity = p.selections.validityDays || 30;
+      $('listCard').hidden = true;
+      writeScope();
+      return chooseCustomer(p.customer_id, p.contact_id).then(function(){
+        quote = p.selections && p.selections.incomplete ? null : p.totals; quoteErr = ''; renderSummary();
+        if (p.selections && p.selections.incomplete) say($('draftMsg'), 'This is an incomplete draft. Fill in the missing details, then press Save proposal.', false);
+        step = printMode ? 4 : (goStep || 1); renderSteps(); $('saveBtn').disabled = p.status !== 'draft';
+        if (printMode) document.body.setAttribute('data-print-ready', '1'); else refreshQuote();
+      });
+    });
+  }
+  $('newPropBtn').addEventListener('click', function(){
+    proposal = null; customer = null; st = freshState(); quote = null; quoteErr = ''; step = 1;
+    $('chosen').hidden = true; $('saveBtn').disabled = false; $('refLabel').textContent = '';
+    writeScope(); renderSummary(); renderSteps(); searchCustomers();
+  });
+
+  // ---------------- templates ----------------
+  var templates = [];
+  function loadTemplates(){
+    api('GET', '/api/proposal-templates').then(function(r){
+      templates = r.status === 200 ? r.json : [];
+      $('tplSel').innerHTML = '<option value="">' + (templates.length ? 'Choose a template...' : 'No templates yet') + '</option>' + templates.map(function(t){ return '<option value="' + t.id + '">' + esc(t.name) + (t.shared ? ' (shared by Victory)' : '') + '</option>'; }).join('');
+      $('tplApply').disabled = !templates.length; $('tplDel').hidden = true;
+    });
+  }
+  function curTpl(){ return templates.filter(function(t){ return String(t.id) === $('tplSel').value; })[0]; }
+  $('tplSel').addEventListener('change', function(){ var t = curTpl(); $('tplDel').hidden = !(t && t.editable); $('tplNote').textContent = t ? (t.note || 'No description.') + ' · by ' + t.by_user : ''; });
+  $('tplApply').addEventListener('click', function(){
+    var t = curTpl(); if (!t) return;
+    if (proposal && proposal.status !== 'draft') return;
+    var base = freshState().input;
+    Object.keys(base).forEach(function(k){ if (t.input[k] !== undefined) base[k] = t.input[k]; });
+    st.input = base; st.validity = t.validity || 30; writeScope(); refreshQuote(); if (typeof renderStyle === 'function') renderStyle();
+    $('tplNote').textContent = 'Applied "' + t.name + '". Adjust anything you like below.';
+  });
+  $('tplDel').addEventListener('click', function(){ var t = curTpl(); if (t && confirm('Delete the template "' + t.name + '"?')) api('DELETE', '/api/proposal-templates/' + t.id).then(loadTemplates); });
+  $('tplSave').addEventListener('click', function(){
+    var name = prompt('Name this template (for example: Textile factory - Standard)'); if (!name) return;
+    var note = prompt('Short description (optional)') || '';
+    var shared = me && me.role === 'admin' && confirm('Share this template with every partner? OK = share, Cancel = keep it for yourself');
+    var inp = JSON.parse(JSON.stringify(st.input));
+    api('POST', '/api/proposal-templates', { name: name, note: note, input: inp, validity: st.validity, shared: shared }).then(function(r){
+      say($('saveMsg'), r.status === 201 ? 'Template saved' : (r.json.error || 'Could not save the template'), r.status === 201); loadTemplates();
+    });
+  });
+
+  // ---------------- start-up ----------------
+  function start(user){
+    me = user;
+    api('GET', '/api/quote/catalog').then(function(r){
+      if (r.status !== 200) { document.body.classList.add('authed'); if (window.PHShell) PHShell.refresh(user); $('main').innerHTML = '<div class="card"><h2>Not ready</h2><p>' + esc(r.json.error || 'Could not load prices.') + ' Ask an Admin to publish the price list.</p></div>'; return; }
+      catalog = r.json;
+      loadTemplates();
+      api('GET', '/api/proposal-sections').then(function(lr){ if (lr.status === 200) { library = lr.json; if (step === 3) renderStyle(); if (step === 4) renderDoc(); } });
+      $('whoami').textContent = user.username + ' (' + user.role + ')';
+      document.body.classList.add('authed'); if (window.PHShell) PHShell.refresh(user);
+      var pm = /[?&]print=(\d+)/.exec(location.search);
+      if (pm) { openProposal(pm[1], true); return; }
+      var cm = /[?&]customer=(\d+)/.exec(location.search);
+      if (cm) { writeScope(); renderSteps(); searchCustomers(); chooseCustomer(+cm[1]).then(function(){ if (customer) go(2); }); return; }
+      var om = /[?&]open=(\d+)/.exec(location.search);
+      if (om) { searchCustomers(); openProposal(om[1], false, 4); return; }
+      try {
+        var pre = JSON.parse(sessionStorage.getItem('ph_prefill') || 'null'); sessionStorage.removeItem('ph_prefill');
+        if (pre && typeof pre === 'object') {
+          var base = freshState().input;
+          Object.keys(base).forEach(function(k){ if (pre[k] !== undefined && typeof pre[k] === typeof base[k]) base[k] = pre[k]; });
+          st.input = base; $('refLabel').textContent = 'From price checker';
+        }
+      } catch (e) {}
+      writeScope(); renderSteps(); searchCustomers();
+    });
+  }
+  $('gGo').addEventListener('click', function(){
+    $('gErr').textContent = '';
+    api('POST', '/api/auth/login', {username: $('gUser').value, password: $('gPass').value}).then(function(r){
+      if (r.status === 200) { $('gPass').value = ''; start(r.json); } else { $('gErr').textContent = r.json.error || 'Could not sign in.'; }
+    }).catch(function(){ $('gErr').textContent = 'Cannot reach the server.'; });
+  });
+  $('gPass').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('gGo').click(); });
+  $('gUser').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('gGo').click(); });
+  $('logoutBtn').addEventListener('click', function(){ api('POST', '/api/auth/logout', {}).then(function(){ location.reload(); }); });
+  api('GET', '/api/auth/me').then(function(r){ if (r.status === 200) start(r.json); }).catch(function(){});
+})();
+</script>
+</body>
+</html>

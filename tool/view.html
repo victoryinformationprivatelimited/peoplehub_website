@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Your PeopleHub proposal</title>
+<link rel="stylesheet" href="/tool/doc.css">
+<style>
+  :root { --ink:#0a1411; --accent:#0d9467; --accent-d:#0a6e4d; --muted:#5d7168; --border:#e0e8e4; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#eef3f1; color:#11201a; font:15px/1.6 Inter,"Segoe UI",system-ui,-apple-system,sans-serif; -webkit-font-smoothing:antialiased; }
+  header { position:sticky; top:0; z-index:10; background:rgba(10,20,17,.94); backdrop-filter:blur(8px); color:#fff; }
+  header .in { max-width:900px; margin:0 auto; padding:12px 18px; display:flex; align-items:center; gap:12px; }
+  .logo { width:32px; height:32px; border-radius:9px; background:linear-gradient(135deg,#10b981,#0a6e4d); display:grid; place-items:center; font-weight:800; }
+  header b { display:block; line-height:1.15; } header small { color:#8fb5a4; font-size:12px; }
+  header .sp { flex:1; }
+  .btn { border:1.5px solid rgba(255,255,255,.28); background:transparent; color:#fff; border-radius:10px; padding:8px 14px; font:inherit; font-weight:650; cursor:pointer; white-space:nowrap; }
+  .btn:hover { background:rgba(255,255,255,.1); } .btn.pri { background:var(--accent); border-color:var(--accent); } .btn.pri:hover { background:#10a878; }
+  .btn:disabled { opacity:.6; cursor:wait; }
+  main { max-width:900px; margin:22px auto 120px; padding:0 14px; }
+  .banner { background:#fff6dc; border:1px solid #ecd48c; border-radius:12px; padding:12px 16px; margin-bottom:16px; font-weight:600; }
+  .state { max-width:480px; margin:18vh auto; text-align:center; padding:0 20px; } .state h1 { font-size:24px; margin:0 0 8px; } .state p { color:var(--muted); }
+  #docWrap { box-shadow:0 12px 40px rgba(10,20,17,.14); border:none !important; border-radius:10px !important; }
+  .foot { text-align:center; color:var(--muted); font-size:12.5px; margin:22px 0 0; }
+  .ask { position:fixed; left:0; right:0; bottom:0; z-index:20; background:#fff; border-top:1px solid var(--border); box-shadow:0 -6px 24px rgba(10,20,17,.1); }
+  .ask .in { max-width:900px; margin:0 auto; padding:12px 18px; display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+  .ask span { flex:1; font-weight:600; min-width:200px; } .ask .btn { color:#fff; background:var(--accent); border-color:var(--accent); }
+  .ask .btn.alt { background:#fff; color:var(--ink); border-color:var(--border); }
+  dialog { border:none; border-radius:16px; padding:24px; width:min(440px,92vw); box-shadow:0 20px 60px rgba(0,0,0,.3); }
+  dialog::backdrop { background:rgba(10,20,17,.55); }
+  dialog textarea { width:100%; min-height:90px; border:1.5px solid var(--border); border-radius:10px; padding:10px 12px; font:inherit; margin:10px 0 14px; }
+  dialog h2 { margin:0; font-size:19px; } .ok { color:#13693a; font-weight:700; }
+  [hidden] { display:none !important; }
+  @media (max-width:600px) { .pg { padding:24px 18px !important; } header small { display:none; } }
+  @media print { header, .ask, .foot, .banner { display:none !important; } body { background:#fff; } main { margin:0; padding:0; max-width:none; } }
+</style>
+</head>
+<body>
+<div id="state" class="state" hidden></div>
+
+<div id="app" hidden>
+  <header><div class="in">
+    <div class="logo">P</div><div><b>PeopleHub HRIS</b><small id="refSmall"></small></div>
+    <div class="sp"></div>
+    <button class="btn" id="pdfBtn">Download PDF</button>
+  </div></header>
+  <main>
+    <div class="banner" id="banner" hidden></div>
+    <div id="docWrap"></div>
+    <p class="foot">We note when this proposal is opened so that we can follow up at the right time.</p>
+  </main>
+  <div class="ask"><div class="in"><span id="askText">Questions, or ready to take the next step?</span><button class="btn alt" id="askBtn">Request a call</button><button class="btn" id="accBtn">Accept proposal</button></div></div>
+</div>
+
+<dialog id="dAcc">
+  <div id="accForm"><h2>Accept this proposal</h2>
+    <div style="color:#5d7168;font-size:14px;margin:4px 0 12px">Type your name to accept the proposal as shown, including the prices and terms. We record your name, the date and a fingerprint of this exact proposal.</div>
+    <label style="font-weight:600;font-size:13px">Full name</label><input type="text" id="aName" maxlength="120" autocomplete="name" style="width:100%;border:1.5px solid #e0e8e4;border-radius:10px;padding:10px 12px;font:inherit;margin:4px 0 10px">
+    <label style="font-weight:600;font-size:13px">Job title</label><input type="text" id="aTitle" maxlength="120" style="width:100%;border:1.5px solid #e0e8e4;border-radius:10px;padding:10px 12px;font:inherit;margin:4px 0 10px">
+    <label style="display:flex;gap:10px;align-items:flex-start;font-size:14px;margin:6px 0 14px"><input type="checkbox" id="aOk" style="margin-top:4px"> <span>I am authorised to accept this proposal on behalf of <b id="aCo"></b>.</span></label>
+    <div id="aErr" style="color:#c43a2b;font-weight:600;min-height:20px;font-size:13px"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn alt" style="background:#fff;color:#11201a;border-color:#e0e8e4" id="aCancel">Cancel</button><button class="btn pri" id="aSend">Accept proposal</button></div></div>
+  <div id="accDone" hidden><h2 class="ok">Proposal accepted</h2><p>Thank you. We have recorded your acceptance and will contact you about the next steps. A confirmation is on its way to your email.</p><button class="btn pri" id="aClose">Close</button></div>
+</dialog>
+
+<dialog id="dlg">
+  <div id="dlgForm"><h2>Request a call</h2><div style="color:#5d7168;font-size:14px">Tell us when suits you, or what you would like to cover. We will get back to you.</div>
+    <input type="tel" id="dlgPhone" maxlength="25" placeholder="Phone number to call (optional)" style="width:100%;margin:10px 0 0;padding:10px;border:1px solid #e0e8e4;border-radius:10px;font:inherit">
+    <input type="text" id="dlgWhen" maxlength="60" placeholder="Best time to call (optional)" style="width:100%;margin:8px 0 0;padding:10px;border:1px solid #e0e8e4;border-radius:10px;font:inherit">
+    <textarea id="dlgMsg" maxlength="400" placeholder="Optional message"></textarea>
+    <div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn alt" style="background:#fff;color:#11201a;border-color:#e0e8e4" id="dlgCancel">Cancel</button><button class="btn pri" id="dlgSend">Send request</button></div></div>
+  <div id="dlgDone" hidden><h2 class="ok">Thank you</h2><p>We have your request and will be in touch shortly.</p><button class="btn pri" id="dlgClose">Close</button></div>
+</dialog>
+
+<script src="/tool/doc.js"></script>
+<script>
+(function(){
+  function $(id){ return document.getElementById(id); }
+  var token = (location.pathname.match(/\/p\/([0-9a-f]{64})/) || [])[1] || '';
+  var sid; try { sid = localStorage.getItem('ph_sid'); if (!sid) { sid = Math.random().toString(36).slice(2, 12) + Date.now().toString(36); localStorage.setItem('ph_sid', sid); } } catch (e) { sid = Math.random().toString(36).slice(2, 12) + Date.now().toString(36); }
+  function send(type, extra){
+    var b = { sid: sid, type: type }; for (var k in (extra || {})) b[k] = extra[k];
+    return fetch('/api/public/track/' + token, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b), keepalive: true }).catch(function(){});
+  }
+  function showState(title, msg){ $('state').innerHTML = '<h1>' + title + '</h1><p>' + msg + '</p>'; $('state').hidden = false; }
+
+  fetch('/api/public/proposal/' + token, { cache: 'no-store' }).then(function(r){ return r.json().then(function(j){ return { status: r.status, json: j }; }); }).then(function(r){
+    if (r.status === 404) return showState('Link not found', 'This link is not valid. Please check the email we sent you, or contact us for a new one.');
+    if (r.status === 410) return showState('This proposal has expired', 'Please contact Victory Information and we will send you a fresh link.');
+    if (r.status !== 200) return showState('Something went wrong', 'Please try again in a moment.');
+    var d = r.json;
+    document.title = 'Proposal ' + d.ref + ' · PeopleHub HRIS';
+    $('refSmall').textContent = 'Proposal ' + d.ref;
+    window.__d = d;
+    $('docWrap').innerHTML = PHDoc.html({ quote: d.quote, input: d.input, validity: d.validity, customer: d.customer, contact: d.contact, ref: d.ref, createdAt: d.createdAt, catalog: d.catalog, presentedBy: d.presentedBy || '', logo: d.logo || null, doc: d.doc || null, online: true, acceptance: d.acceptance ? { name: d.acceptance.name, title: d.acceptance.title, at: d.acceptance.at, ref: d.acceptance.ref } : null });
+    $('aCo').textContent = d.customer.name;
+    barState(d);
+    if (d.replaced) { $('banner').hidden = false; $('banner').textContent = 'A newer version of this proposal has been issued. Please use the latest link we sent you.'; }
+    $('app').hidden = false;
+    track();
+  }).catch(function(){ showState('Something went wrong', 'Please check your connection and try again.'); });
+
+  // the bottom bar: accept, or a record that it was accepted
+  function barState(d){
+    if (d.acceptance) {
+      $('askText').textContent = 'Accepted by ' + d.acceptance.name + ' on ' + new Date(d.acceptance.at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) + '. Thank you.';
+      $('accBtn').hidden = true;
+    } else if (d.closed || d.replaced) { $('accBtn').hidden = true; }
+  }
+  $('accBtn').addEventListener('click', function(){ $('aErr').textContent = ''; $('accForm').hidden = false; $('accDone').hidden = true; $('dAcc').showModal(); $('aName').focus(); });
+  $('aCancel').addEventListener('click', function(){ $('dAcc').close(); });
+  $('aClose').addEventListener('click', function(){ $('dAcc').close(); });
+  $('aSend').addEventListener('click', function(){
+    var b = this; b.disabled = true; $('aErr').textContent = '';
+    fetch('/api/public/proposal/' + token + '/accept', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: $('aName').value, title: $('aTitle').value, confirm: $('aOk').checked }) })
+      .then(function(r){ return r.json().then(function(j){ return { status: r.status, json: j }; }); })
+      .then(function(r){
+        b.disabled = false;
+        if (r.status !== 200) { $('aErr').textContent = r.json.error || 'Could not record your acceptance'; return; }
+        var d = window.__d; d.acceptance = { name: r.json.name, title: r.json.title, at: r.json.acceptedAt, ref: r.json.ref };
+        $('docWrap').innerHTML = PHDoc.html({ quote: d.quote, input: d.input, validity: d.validity, customer: d.customer, contact: d.contact, ref: d.ref, createdAt: d.createdAt, catalog: d.catalog, presentedBy: d.presentedBy || '', logo: d.logo || null, doc: d.doc || null, online: true, acceptance: d.acceptance });
+        barState(d); $('accForm').hidden = true; $('accDone').hidden = false;
+      }).catch(function(){ b.disabled = false; $('aErr').textContent = 'Cannot reach the server. Please try again.'; });
+  });
+
+  function track(){
+    send('open');
+    // "engaged" = the page has really been on screen for a few seconds (filters out link scanners and instant bounces)
+    var visibleMs = 0, last = Date.now(), engaged = false, beat = 0;
+    function tick(){
+      var now = Date.now(), vis = document.visibilityState === 'visible';
+      if (vis) { var dt = Math.min(now - last, 5000); visibleMs += dt; beat += dt; }
+      last = now;
+      if (!engaged && visibleMs >= 3000) { engaged = true; send('engaged'); }
+      if (beat >= 10000) { send('heartbeat', { ms: beat }); beat = 0; }
+    }
+    setInterval(tick, 1000);
+    document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'hidden' && beat > 1000) { send('heartbeat', { ms: Math.min(beat, 15000) }); beat = 0; } });
+    window.addEventListener('pagehide', function(){ if (beat > 1000) send('heartbeat', { ms: Math.min(beat, 15000) }); });
+    // which parts were actually read
+    var seen = {};
+    if ('IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function(es){ es.forEach(function(e){ var s = e.target.getAttribute('data-sec'); if (e.isIntersecting && !seen[s]) { seen[s] = 1; send('section', { section: s }); } }); }, { threshold: 0.35 });
+      document.querySelectorAll('[data-sec]').forEach(function(el){ io.observe(el); });
+    }
+  }
+
+  $('pdfBtn').addEventListener('click', function(){
+    var b = this; b.disabled = true; b.textContent = 'Preparing…';
+    fetch('/api/public/proposal/' + token + '/pdf?sid=' + encodeURIComponent(sid)).then(function(r){ if (!r.ok) throw new Error(); return r.blob(); }).then(function(blob){
+      var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'PeopleHub-proposal-' + ($('refSmall').textContent.replace('Proposal ', '') || 'proposal') + '.pdf'; document.body.appendChild(a); a.click(); a.remove();
+      b.textContent = 'Download PDF'; b.disabled = false;
+    }).catch(function(){ b.textContent = 'Try again'; b.disabled = false; });
+  });
+  $('askBtn').addEventListener('click', function(){ $('dlgForm').hidden = false; $('dlgDone').hidden = true; $('dlg').showModal(); });
+  $('dlgCancel').addEventListener('click', function(){ $('dlg').close(); });
+  $('dlgClose').addEventListener('click', function(){ $('dlg').close(); });
+  $('dlgSend').addEventListener('click', function(){ send('cta', { note: $('dlgMsg').value, phone: $('dlgPhone').value, when: $('dlgWhen').value }).then(function(){ $('dlgForm').hidden = true; $('dlgDone').hidden = false; }); });
+})();
+</script>
+</body>
+</html>

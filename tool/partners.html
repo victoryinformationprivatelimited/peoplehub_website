@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>PeopleHub Partners</title>
+<style>
+  :root { --bg:#f6f6fb; --surface:#fff; --s2:#eef0f8; --border:#dcdfeb; --text:#1b1c28; --muted:#5c5f74; --accent:#4338ca; --soft:#eceafc; --good:#15803d; --danger:#b91c1c; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 -apple-system,'Segoe UI',sans-serif; }
+  .wrap { max-width:1150px; margin:0 auto; padding:24px 20px 80px; }
+  h1 { font-size:22px; margin:0 0 4px; } h2 { font-size:15px; margin:0 0 4px; }
+  .top { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:18px; }
+  .top .sp { flex:1; } .top a { color:var(--accent); font-weight:600; text-decoration:none; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:18px 20px; margin-bottom:16px; }
+  .hint { color:var(--muted); font-size:12px; margin-bottom:12px; max-width:90ch; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); padding:0 6px 8px; white-space:nowrap; }
+  td { padding:5px 6px; border-top:1px solid var(--border); vertical-align:middle; }
+  input[type=text], input[type=email], input[type=number], input[type=password], select { width:100%; padding:6px 8px; border:1px solid var(--border); border-radius:6px; background:var(--s2); font:inherit; }
+  input[type=number] { text-align:right; width:80px; }
+  .table-wrap { overflow-x:auto; }
+  button { padding:7px 12px; border-radius:7px; border:1px solid var(--border); background:var(--s2); font:inherit; font-weight:600; cursor:pointer; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .msg { font-size:12px; margin-left:8px; } .msg.ok { color:var(--good); } .msg.err { color:var(--danger); }
+  .tag { display:inline-block; font-size:11px; padding:2px 8px; border-radius:99px; background:var(--soft); color:var(--accent); margin:1px 2px 1px 0; }
+  .tag.off { background:#eee; color:#888; text-decoration:line-through; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; align-items:end; }
+  .grid label { font-size:12px; color:var(--muted); display:block; margin-bottom:3px; }
+  .readonly button.admin-only, .readonly .admin-only { display:none; }
+  #gate { position:fixed; inset:0; background:#0a0d1c; display:flex; align-items:center; justify-content:center; z-index:10; }
+  #gate .box { background:var(--surface); border-radius:12px; padding:28px; width:340px; }
+  #gate input { margin-bottom:12px; } #gate .err { color:var(--danger); font-size:12px; min-height:16px; }
+  body.authed #gate { display:none; } body:not(.authed) .wrap { display:none; }
+</style>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem("ph-theme")||"dark"}catch(e){}</script>
+<link rel="stylesheet" href="ui.css">
+</head>
+<body>
+
+<div id="gate">
+  <div class="box">
+    <h2>Partners &amp; Categories</h2>
+    <div class="hint">Admin or staff sign-in required.</div>
+    <input type="text" id="gUser" placeholder="Username" autocomplete="username">
+    <input type="password" id="gPass" placeholder="Password" autocomplete="current-password">
+    <div class="err" id="gErr"></div>
+    <button class="primary" id="gGo" style="width:100%">Log in</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="top">
+    <div><h1>Partners &amp; Categories</h1></div>
+    <div class="sp"></div>
+    <a href="price-list.html">Price list</a>
+    <span id="whoami" class="hint" style="margin:0"></span>
+    <button id="logoutBtn">Log out</button>
+  </div>
+
+  <div class="card">
+    <h2>Partner categories</h2>
+    <div class="hint">Each category has a maximum discount. A partner in that category signs in and sees their own prices with the discount already applied. Core HR is the minimum fee and is never discounted.</div>
+    <div class="table-wrap"><table id="catTable"></table></div>
+    <div class="admin-only" style="margin-top:12px">
+      <div class="grid">
+        <div><label>New category name</label><input type="text" id="ncName" placeholder="e.g. Bronze Reseller"></div>
+        <div><label>Type</label><select id="ncType"><option value="reseller">Reseller (dealer)</option><option value="agent">Agent</option></select></div>
+        <div><label>Max discount %</label><input type="number" id="ncPct" value="10" min="0" max="100" step="0.5"></div>
+        <div><button class="primary" id="ncAdd">Add category</button><span class="msg" id="ncMsg"></span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Partners</h2>
+    <div class="hint">Create a login for each partner. They see only their own discounted price list.</div>
+    <div class="table-wrap"><table id="partnerTable"></table></div>
+    <div class="admin-only" style="margin-top:12px">
+      <h2 style="margin-top:6px">Add a partner</h2>
+      <div class="grid">
+        <div><label>Company</label><input type="text" id="npCompany"></div>
+        <div><label>Contact person</label><input type="text" id="npContact"></div>
+        <div><label>Email</label><input type="email" id="npEmail"></div>
+        <div><label>Phone</label><input type="text" id="npPhone"></div>
+        <div><label>Category</label><select id="npCat"></select></div>
+        <div><button class="primary" id="npAdd">Add partner</button><span class="msg" id="npMsg"></span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="shell.js"></script>
+<script>
+(function(){
+  var me = null, cats = [], partners = [];
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function api(method, url, body){
+    return fetch(url, {method:method, headers:{'Content-Type':'application/json'}, body: body === undefined ? undefined : JSON.stringify(body)})
+      .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return {status:r.status, json:j}; }); });
+  }
+  function say(el, text, ok){ el.textContent = text; el.className = 'msg ' + (ok ? 'ok' : 'err'); }
+
+  function renderCats(){
+    $('catTable').innerHTML = '<tr><th>Category</th><th>Type</th><th>Max discount %</th><th title="Paid on the first-year value of accepted proposals">Commission %</th><th>Active</th><th></th></tr>' + cats.map(function(c){
+      return '<tr data-cat="' + c.id + '"><td><input type="text" data-f="name" value="' + esc(c.name) + '"></td>' +
+        '<td><select data-f="partner_type"><option value="reseller"' + (c.partner_type === 'reseller' ? ' selected' : '') + '>Reseller (dealer)</option><option value="agent"' + (c.partner_type === 'agent' ? ' selected' : '') + '>Agent</option></select></td>' +
+        '<td><input type="number" data-f="max_discount_pct" min="0" max="100" step="0.5" value="' + c.max_discount_pct + '"></td>' +
+        '<td><input type="number" data-f="commission_pct" min="0" max="100" step="0.5" value="' + (c.commission_pct || 0) + '"></td>' +
+        '<td><input type="checkbox" data-f="active"' + (c.active ? ' checked' : '') + '></td>' +
+        '<td class="admin-only"><button data-save-cat="' + c.id + '">Save</button><span class="msg"></span></td></tr>';
+    }).join('');
+    $('npCat').innerHTML = cats.filter(function(c){ return c.active; }).map(function(c){ return '<option value="' + c.id + '">' + esc(c.name) + ' (max ' + c.max_discount_pct + '%)</option>'; }).join('');
+    if (me && me.role !== 'admin') document.querySelectorAll('#catTable input, #catTable select').forEach(function(e){ e.disabled = true; });
+  }
+
+  function renderPartners(){
+    $('partnerTable').innerHTML = '<tr><th>Company</th><th>Contact</th><th>Email</th><th>Category</th><th>Active</th><th>Logins</th><th></th></tr>' + partners.map(function(p){
+      var opts = cats.map(function(c){ return '<option value="' + c.id + '"' + (c.id === p.category_id ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('');
+      return '<tr data-p="' + p.id + '"><td><input type="text" data-f="company_name" value="' + esc(p.company_name) + '"></td>' +
+        '<td><input type="text" data-f="contact_name" value="' + esc(p.contact_name) + '"></td>' +
+        '<td><input type="email" data-f="email" value="' + esc(p.email) + '"></td>' +
+        '<td><select data-f="category_id">' + opts + '</select></td>' +
+        '<td><input type="checkbox" data-f="active"' + (p.active ? ' checked' : '') + '></td>' +
+        '<td>' + (p.logins.map(function(l){ return '<span class="tag' + (l.active ? '' : ' off') + '">' + esc(l.username) + '</span>'; }).join('') || '<span class="hint">none</span>') + '</td>' +
+        '<td class="admin-only" style="white-space:nowrap"><button data-save-p="' + p.id + '">Save</button> <button data-login-p="' + p.id + '">Login…</button><span class="msg"></span></td></tr>';
+    }).join('') || '<tr><td colspan="7" class="hint">No partners yet.</td></tr>';
+    if (me && me.role !== 'admin') document.querySelectorAll('#partnerTable input, #partnerTable select').forEach(function(e){ e.disabled = true; });
+  }
+
+  function refresh(){
+    return api('GET', '/api/categories').then(function(r){ cats = r.json; return api('GET', '/api/partners'); }).then(function(r){ partners = r.json; renderCats(); renderPartners(); });
+  }
+
+  function rowData(tr){
+    var o = {}; tr.querySelectorAll('[data-f]').forEach(function(e){ o[e.dataset.f] = e.type === 'checkbox' ? e.checked : e.value; }); return o;
+  }
+
+  document.addEventListener('click', function(e){
+    var t = e.target;
+    if (t.dataset.saveCat) {
+      var tr = t.closest('tr'), msg = tr.querySelector('.msg'), d = rowData(tr);
+      d.max_discount_pct = parseFloat(d.max_discount_pct); d.commission_pct = parseFloat(d.commission_pct) || 0;
+      api('PUT', '/api/categories/' + t.dataset.saveCat, d).then(function(r){ if (r.status === 200) { say(msg, 'Saved', true); refresh(); } else say(msg, r.json.error || 'Failed', false); });
+    }
+    if (t.dataset.saveP) {
+      var tr2 = t.closest('tr'), msg2 = tr2.querySelector('.msg'), d2 = rowData(tr2);
+      api('PUT', '/api/partners/' + t.dataset.saveP, d2).then(function(r){ if (r.status === 200) { say(msg2, 'Saved', true); refresh(); } else say(msg2, r.json.error || 'Failed', false); });
+    }
+    if (t.dataset.loginP) {
+      var tr3 = t.closest('tr'), msg3 = tr3.querySelector('.msg');
+      var username = prompt('Login username for this partner (3+ letters/numbers; existing username resets its password):');
+      if (!username) return;
+      var password = prompt('Password (at least 10 characters):');
+      if (!password) return;
+      api('POST', '/api/partners/' + t.dataset.loginP + '/login', {username: username, password: password}).then(function(r){
+        if (r.status === 200 || r.status === 201) { say(msg3, r.json.reset ? 'Password reset' : 'Login created', true); refresh(); } else say(msg3, r.json.error || 'Failed', false);
+      });
+    }
+  });
+
+  $('ncAdd').addEventListener('click', function(){
+    api('POST', '/api/categories', {name: $('ncName').value, partner_type: $('ncType').value, max_discount_pct: parseFloat($('ncPct').value)}).then(function(r){
+      if (r.status === 201) { say($('ncMsg'), 'Added', true); $('ncName').value = ''; refresh(); } else say($('ncMsg'), r.json.error || 'Failed', false);
+    });
+  });
+  $('npAdd').addEventListener('click', function(){
+    api('POST', '/api/partners', {company_name: $('npCompany').value, contact_name: $('npContact').value, email: $('npEmail').value, phone: $('npPhone').value, category_id: $('npCat').value}).then(function(r){
+      if (r.status === 201) { say($('npMsg'), 'Added — now use "Login…" on its row to create a login.', true); ['npCompany','npContact','npEmail','npPhone'].forEach(function(i){ $(i).value = ''; }); refresh(); } else say($('npMsg'), r.json.error || 'Failed', false);
+    });
+  });
+
+  function unlock(user){
+    if (user.role === 'partner') { $('gErr').textContent = 'Partner logins use the price list page.'; api('POST', '/api/auth/logout', {}); return; }
+    me = user;
+    $('whoami').textContent = user.username + ' (' + user.role + ')';
+    document.body.classList.add('authed'); if (window.PHShell) PHShell.refresh(user);
+    document.body.classList.toggle('readonly', user.role !== 'admin');
+    refresh();
+  }
+  $('gGo').addEventListener('click', function(){
+    $('gErr').textContent = '';
+    api('POST', '/api/auth/login', {username: $('gUser').value, password: $('gPass').value}).then(function(r){
+      if (r.status === 200) { $('gPass').value = ''; unlock(r.json); } else { $('gErr').textContent = r.json.error || 'Could not sign in.'; }
+    }).catch(function(){ $('gErr').textContent = 'Cannot reach the server.'; });
+  });
+  $('gPass').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('gGo').click(); });
+  $('gUser').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('gGo').click(); });
+  $('logoutBtn').addEventListener('click', function(){ api('POST', '/api/auth/logout', {}).then(function(){ location.reload(); }); });
+  api('GET', '/api/auth/me').then(function(r){ if (r.status === 200) unlock(r.json); }).catch(function(){});
+})();
+</script>
+</body>
+</html>

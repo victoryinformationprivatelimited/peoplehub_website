@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Reset password</title>
+<link rel="stylesheet" href="ui.css">
+<style>
+  body { display:grid; place-items:center; min-height:100vh; padding:20px; background: radial-gradient(90% 70% at 15% 0%, rgba(16,185,129,.38), transparent 60%), radial-gradient(70% 60% at 100% 100%, rgba(13,148,103,.28), transparent 60%), var(--ink); }
+  .box { width:min(420px,100%); background:#fff; border-radius:20px; padding:34px 32px 28px; box-shadow:var(--shadow-lg); }
+  .box::before { content:"P"; display:grid; place-items:center; width:46px; height:46px; border-radius:13px; background:linear-gradient(135deg,#10b981,#0a6e4d); color:#fff; font-weight:800; font-size:20px; margin-bottom:18px; }
+  .box input { margin-bottom:12px; } .box button.primary { width:100%; padding:12px; font-size:15px; }
+  .back { display:block; text-align:center; margin-top:16px; font-size:13px; font-weight:600; }
+  .done { background:var(--soft); border-radius:12px; padding:14px 16px; font-weight:600; color:var(--accent-d); }
+</style>
+</head>
+<body>
+<div class="box">
+  <div id="askBox">
+    <h2 style="font-size:22px">Forgot your password?</h2>
+    <div class="hint" style="margin:2px 0 18px">Enter your username or the email on your profile. We will email you a link to choose a new one.</div>
+    <input type="text" id="who" placeholder="Username or email" autocomplete="username">
+    <button class="primary" id="askBtn">Email me a reset link</button>
+    <div class="msg" id="askMsg" style="margin:12px 0 0"></div>
+    <div class="hint" style="margin-top:12px">No email on your account? Ask an administrator to issue a temporary password.</div>
+  </div>
+  <div id="setBox" hidden>
+    <h2 style="font-size:22px">Choose a new password</h2>
+    <div class="hint" style="margin:2px 0 18px">At least 10 characters.</div>
+    <input type="password" id="np1" placeholder="New password" autocomplete="new-password">
+    <input type="password" id="np2" placeholder="Repeat new password" autocomplete="new-password">
+    <button class="primary" id="setBtn">Save new password</button>
+    <div class="msg" id="setMsg" style="margin:12px 0 0"></div>
+  </div>
+  <a class="back" href="dashboard.html">Back to sign in</a>
+</div>
+<script>
+(function(){
+  function $(id){ return document.getElementById(id); }
+  function api(url, body){ return fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) }).then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return { status:r.status, json:j }; }); }); }
+  function say(el, t, ok){ el.textContent = t; el.className = 'msg ' + (ok ? 'ok' : 'err'); }
+  var m = /#token=([0-9a-f]{64})/.exec(location.hash), token = m ? m[1] : '';
+  if (token) { $('askBox').hidden = true; $('setBox').hidden = false; history.replaceState(null, '', location.pathname); }
+  $('askBtn').addEventListener('click', function(){
+    api('/api/auth/forgot', { identifier: $('who').value }).then(function(r){
+      if (r.status === 200) { $('askBtn').disabled = true; $('askMsg').className = 'done'; $('askMsg').textContent = r.json.message; } else say($('askMsg'), r.json.error || 'Something went wrong', false);
+    });
+  });
+  $('setBtn').addEventListener('click', function(){
+    if ($('np1').value !== $('np2').value) return say($('setMsg'), 'The two passwords do not match', false);
+    api('/api/auth/reset', { token: token, password: $('np1').value }).then(function(r){
+      if (r.status === 200) { $('setBtn').disabled = true; $('setMsg').className = 'done'; $('setMsg').innerHTML = 'Password changed. You can now <a href="proposal.html">sign in</a>.'; } else say($('setMsg'), r.json.error || 'Could not reset', false);
+    });
+  });
+})();
+</script>
+</body>
+</html>

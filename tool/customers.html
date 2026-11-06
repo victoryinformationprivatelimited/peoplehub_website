@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Customers</title>
+<style>
+  .bar { display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
+  .bar input[type=search] { max-width:340px; }
+  .chip { border:1.5px solid var(--border); background:var(--surface); border-radius:99px; padding:6px 14px; font-weight:650; font-size:13px; cursor:pointer; color:var(--muted); }
+  .chip b { margin-left:6px; background:var(--s3); border-radius:99px; padding:0 8px; font-size:12px; color:var(--text); } .chip.on { background:var(--ink); border-color:var(--ink); color:#fff; } .chip.on b { background:rgba(255,255,255,.18); color:#fff; }
+  .grid-c { display:grid; grid-template-columns:repeat(auto-fill,minmax(330px,1fr)); gap:16px; }
+  .cc { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px 20px; text-decoration:none; color:inherit; display:flex; flex-direction:column; gap:12px; transition:border-color .15s, box-shadow .15s, transform .1s; }
+  .cc:hover { border-color:var(--accent-bd); box-shadow:var(--shadow-lg); transform:translateY(-1px); }
+  .cc.off { opacity:.6; }
+  .cc .top2 { display:flex; gap:14px; align-items:center; }
+  .cc .av { width:46px; height:46px; border-radius:13px; background:var(--soft); color:var(--accent-d); display:grid; place-items:center; font-weight:800; flex:none; font-size:15px; }
+  .cc h3 { margin:0; font-size:16px; text-transform:none; letter-spacing:0; color:var(--text); line-height:1.25; } .cc .ind { color:var(--muted); font-size:12.5px; }
+  .cc .who { font-size:13.5px; line-height:1.45; } .cc .who span { color:var(--muted); display:block; font-size:12.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .cc .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; border-top:1px solid var(--border); padding-top:12px; }
+  .cc .stats small { display:block; color:var(--muted); font-size:10.5px; text-transform:uppercase; letter-spacing:.07em; font-weight:700; } .cc .stats b { font-size:15px; font-variant-numeric:tabular-nums; }
+  .tagp { font-size:11px; font-weight:700; background:var(--soft); color:var(--accent-d); padding:2px 9px; border-radius:99px; } .tagp.grey { background:var(--neu-bg); color:var(--muted); }
+  .empty { text-align:center; padding:60px 20px; color:var(--muted); }
+  dialog { border:none; border-radius:18px; padding:26px; width:min(560px,94vw); box-shadow:0 24px 70px rgba(0,0,0,.35); } dialog::backdrop { background:rgba(10,20,17,.55); }
+  .warn { background:var(--warn); border:1px solid var(--warn-bd); border-radius:10px; padding:10px 14px; margin:10px 0; font-size:13px; }
+</style>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem("ph-theme")||"dark"}catch(e){}</script>
+<link rel="stylesheet" href="ui.css">
+</head>
+<body>
+<div id="gate"><div class="box">
+  <h2>Customers</h2><div class="hint">Sign in with your PeopleHub login.</div>
+  <input type="text" id="gUser" placeholder="Username" autocomplete="username">
+  <input type="password" id="gPass" placeholder="Password" autocomplete="current-password">
+  <div class="err" id="gErr"></div><button class="primary" id="gGo">Log in</button>
+</div></div>
+
+<div class="wrap">
+  <div class="top"><h1>Customers</h1><div class="sp"></div><button class="primary" id="newBtn">+ New customer</button></div>
+  <div class="bar">
+    <input type="search" id="q" placeholder="Search by company, contact or email">
+    <div style="display:flex;gap:8px;flex-wrap:wrap" id="chips"></div>
+  </div>
+  <div class="grid-c" id="list"></div>
+  <div class="empty" id="empty" hidden></div>
+</div>
+
+<dialog id="dlg">
+  <h2>New customer</h2>
+  <div class="hint">Add the organisation and its first contact. You can add more contacts later.</div>
+  <div class="grid">
+    <div style="grid-column:1/-1"><label>Organisation name *</label><input type="text" id="nName" maxlength="160"></div>
+    <div><label>Industry</label><input type="text" id="nInd" maxlength="120"></div>
+    <div><label>Sites / locations</label><input type="text" id="nSites" maxlength="120" placeholder="e.g. Colombo, Kandy"></div>
+    <div><label>Contact name</label><input type="text" id="nCName" maxlength="120"></div>
+    <div><label>Job title</label><input type="text" id="nCTitle" maxlength="120"></div>
+    <div><label>Contact email</label><input type="email" id="nCEmail" maxlength="160"></div>
+    <div><label>Contact phone</label><input type="text" id="nCPhone" maxlength="40"></div>
+    <div id="nPartnerBox" hidden style="grid-column:1/-1"><label>Belongs to partner</label><select id="nPartner"><option value="">Victory direct</option></select></div>
+  </div>
+  <div class="warn" id="dupe" hidden></div>
+  <div style="display:flex;gap:10px;justify-content:flex-end;align-items:center"><span class="msg" id="nMsg"></span><button id="nCancel">Cancel</button><button class="primary" id="nSave">Save customer</button></div>
+</dialog>
+
+<script src="shell.js"></script>
+<script src="app.js"></script>
+<script>
+(function(){
+  var $ = PH.$, esc = PH.esc, me = null, all = [], filter = 'all';
+  function ini(n){ return String(n || '?').trim().split(/\s+/).slice(0, 2).map(function(w){ return w.charAt(0); }).join('').toUpperCase(); }
+  function m0(n){ return '$' + Math.round(n || 0).toLocaleString('en-US'); }
+  function ago(d){ if (!d) return 'no activity'; var s = (Date.now() - new Date(d)) / 1000; if (s < 3600) return 'just now'; if (s < 86400) return Math.round(s / 3600) + ' h ago'; if (s < 86400 * 60) return Math.round(s / 86400) + ' d ago'; return new Date(d).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }); }
+
+  function chips(){
+    var n = { all: all.length, open: all.filter(function(c){ return c.open_monthly > 0; }).length, won: all.filter(function(c){ return c.won_monthly > 0; }).length, none: all.filter(function(c){ return !c.proposal_count; }).length, inactive: all.filter(function(c){ return !c.active; }).length };
+    $('chips').innerHTML = [['all', 'All'], ['open', 'With open proposals'], ['won', 'Customers'], ['none', 'No proposal yet'], ['inactive', 'Inactive']].map(function(f){ return '<button class="chip' + (filter === f[0] ? ' on' : '') + '" data-f="' + f[0] + '">' + f[1] + '<b>' + n[f[0]] + '</b></button>'; }).join('');
+  }
+  function draw(){
+    var rows = all.filter(function(c){ return filter === 'all' ? c.active : filter === 'open' ? c.open_monthly > 0 : filter === 'won' ? c.won_monthly > 0 : filter === 'none' ? (c.active && !c.proposal_count) : !c.active; });
+    $('empty').hidden = rows.length > 0;
+    $('empty').innerHTML = all.length ? 'No customers match.' : 'No customers yet. Add your first one with <b>+ New customer</b>, or convert a lead.';
+    $('list').innerHTML = rows.map(function(c){
+      var k = c.primary_contact;
+      return '<a class="cc' + (c.active ? '' : ' off') + '" href="customer.html?id=' + c.id + '"><div class="top2"><div class="av">' + esc(ini(c.name)) + '</div><div style="min-width:0"><h3>' + esc(c.name) + '</h3><div class="ind">' + esc(c.industry || 'Industry not set') + (c.sites ? ' · ' + esc(c.sites) : '') + '</div></div></div>' +
+        '<div class="who">' + (k ? '<b>' + esc(k.name) + '</b>' + (k.title ? ' <span style="display:inline">· ' + esc(k.title) + '</span>' : '') + (k.email ? '<span>' + esc(k.email) + '</span>' : '') + (k.phone ? '<span>' + esc(k.phone) + '</span>' : '') : '<span style="color:var(--muted)">No contact yet</span>') + '</div>' +
+        '<div>' + (c.partner_name && me.role !== 'partner' ? '<span class="tagp">' + esc(c.partner_name) + '</span> ' : '') + (!c.active ? '<span class="tagp grey">Inactive</span> ' : '') + (c.won_monthly > 0 ? '<span class="tagp">Customer</span>' : '') + '</div>' +
+        '<div class="stats"><div><small>Proposals</small><b>' + c.proposal_count + '</b></div><div><small>Open value</small><b>' + (c.open_monthly ? m0(c.open_monthly) + '/mo' : '—') + '</b></div><div><small>Last activity</small><b style="font-size:13px">' + ago(c.last_activity) + '</b></div></div></a>';
+    }).join('');
+  }
+  var qt;
+  function load(){ PH.api('GET', '/api/customers?q=' + encodeURIComponent($('q').value)).then(function(r){ all = r.json || []; chips(); draw(); }); }
+  $('q').addEventListener('input', function(){ clearTimeout(qt); qt = setTimeout(load, 250); });
+  $('chips').addEventListener('click', function(e){ var b = e.target.closest('[data-f]'); if (b) { filter = b.dataset.f; chips(); draw(); } });
+
+  // new customer
+  function checkDupe(){
+    var qs = 'name=' + encodeURIComponent($('nName').value) + '&email=' + encodeURIComponent($('nCEmail').value);
+    if (!$('nName').value && !$('nCEmail').value) return;
+    PH.api('GET', '/api/customers/check?' + qs).then(function(r){
+      var d = r.json || [];
+      $('dupe').hidden = !d.length;
+      $('dupe').innerHTML = d.length ? 'This looks like a customer you already have: ' + d.map(function(x){ return '<a href="customer.html?id=' + x.id + '"><b>' + esc(x.name) + '</b></a>'; }).join(', ') + '.' : '';
+    });
+  }
+  $('nName').addEventListener('blur', checkDupe); $('nCEmail').addEventListener('blur', checkDupe);
+  $('newBtn').addEventListener('click', function(){
+    ['nName','nInd','nSites','nCName','nCTitle','nCEmail','nCPhone'].forEach(function(i){ $(i).value = ''; });
+    $('dupe').hidden = true; $('nMsg').textContent = ''; $('dlg').showModal(); $('nName').focus();
+  });
+  $('nCancel').addEventListener('click', function(){ $('dlg').close(); });
+  $('nSave').addEventListener('click', function(){
+    var body = { name: $('nName').value, industry: $('nInd').value, sites: $('nSites').value, partner_id: $('nPartner').value || undefined, contact: { name: $('nCName').value, title: $('nCTitle').value, email: $('nCEmail').value, phone: $('nCPhone').value } };
+    PH.api('POST', '/api/customers', body).then(function(r){
+      if (r.status === 201) location.href = 'customer.html?id=' + r.json.id; else PH.say($('nMsg'), r.json.error || 'Could not save', false);
+    });
+  });
+
+  PH.boot(function(user){
+    me = user; load();
+    if (user.role !== 'partner') PH.api('GET', '/api/partners').then(function(r){
+      $('nPartnerBox').hidden = false;
+      $('nPartner').innerHTML = '<option value="">Victory direct</option>' + (r.json || []).filter(function(p){ return p.active; }).map(function(p){ return '<option value="' + p.id + '">' + esc(p.company_name) + '</option>'; }).join('');
+    });
+  });
+})();
+</script>
+</body>
+</html>

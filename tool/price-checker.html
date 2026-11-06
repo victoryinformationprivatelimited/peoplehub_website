@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Price checker</title>
+<style>
+  .chk { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:8px; }
+  .chk .opt { padding:10px 12px; }
+  .seg { display:inline-flex; background:var(--s3); border-radius:11px; padding:3px; gap:2px; flex-wrap:wrap; }
+  .seg button { border:none; background:none; padding:7px 14px; border-radius:9px; color:var(--muted); font-weight:650; box-shadow:none; }
+  .seg button.on { background:var(--surface); color:var(--accent-d); box-shadow:0 1px 3px rgba(0,0,0,.12); }
+  .cta { display:flex; flex-direction:column; gap:8px; margin-top:16px; }
+  .cta button { width:100%; padding:12px; font-size:15px; }
+</style>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem("ph-theme")||"dark"}catch(e){}</script>
+<link rel="stylesheet" href="ui.css">
+</head>
+<body>
+<div id="gate"><div class="box">
+  <h2>Price checker</h2><div class="hint">Sign in with your PeopleHub pricing login.</div>
+  <input type="text" id="gUser" placeholder="Username" autocomplete="username">
+  <input type="password" id="gPass" placeholder="Password" autocomplete="current-password">
+  <div class="err" id="gErr"></div><button class="primary" id="gGo">Log in</button>
+</div></div>
+
+<div class="wrap">
+  <div class="top"><h1>Price checker</h1></div>
+  <div class="sub">Enter what the client needs and see the price straight away. Nothing is saved; turn it into a proposal when you are ready.</div>
+
+  <div class="layout">
+    <div>
+      <div class="card">
+        <h2>The organisation</h2>
+        <div class="grid">
+          <div><label>Number of employees</label><input type="number" id="emp" min="1" step="1" placeholder="e.g. 180"><div class="hint" id="bandHint"></div></div>
+          <div><label>Administrator seats</label><input type="number" id="adm" min="0" step="1" value="3"><div class="hint" id="seatHint"></div></div>
+          <div><label>Employee portal users</label><input type="number" id="por" min="0" step="1" value="0"><div class="hint"><a href="#" id="same">same as employees</a></div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Modules and add-ons</h2>
+        <div class="hint" style="margin-bottom:6px">Core HR is always included.</div>
+        <div id="opts"></div>
+      </div>
+
+      <div class="card">
+        <h2>Usage and services</h2>
+        <div class="grid">
+          <div><label>Extra storage (GB)</label><input type="number" id="sto" min="0" value="0"><div class="hint" id="stoHint"></div></div>
+          <div><label>SMS per month</label><input type="number" id="sms" min="0" value="0"></div>
+          <div><label>WhatsApp per month</label><input type="number" id="wa" min="0" value="0"></div>
+          <div><label>Email per month</label><input type="number" id="em" min="0" value="0"></div>
+          <div><label>Integration hours</label><input type="number" id="ih" min="0" value="0"></div>
+          <div><label>Customisation hours</label><input type="number" id="ch" min="0" value="0"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Billing and discount</h2>
+        <div class="grid">
+          <div><label>Licence</label><div class="seg" id="segType"><button data-v="subscription" class="on">Subscription</button><button data-v="perpetual">Perpetual</button></div></div>
+          <div id="termBox"><label>Billing</label><div class="seg" id="segTerm"><button data-v="monthly" class="on">Monthly</button><button data-v="annual">Annual</button><button data-v="2yr">2 years</button><button data-v="3yr">3 years</button></div></div>
+          <div><label>Discount %</label><input type="number" id="disc" min="0" max="100" step="0.5" value="0"><div class="hint" id="capHint"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card summary">
+      <h2>Price</h2>
+      <div id="sumBody">Enter the number of employees to see the price.</div>
+      <div style="padding:0 22px 22px">
+        <div class="cta"><button class="primary" id="mk" disabled>Create proposal from this</button><button id="reset">Start over</button></div>
+        <div class="hint" id="mkHint" style="margin-top:8px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="shell.js"></script>
+<script src="app.js"></script>
+<script>
+(function(){
+  var $ = PH.$, esc = PH.esc, money = PH.money;
+  var catalog = null, items = [], billType = 'subscription', billTerm = 'monthly', qt = null, seq = 0, quote = null, err = '';
+
+  function num(id){ return parseFloat($(id).value) || 0; }
+  function input(){
+    var cust = [];
+    if (num('ch') > 0) cust.push({ title: 'Customisation', details: 'Estimated in the price checker', hours: num('ch') });
+    return {
+      employees: parseInt($('emp').value, 10) || 0, adminSeats: Math.max(0, parseInt($('adm').value, 10) || 0), portalUsers: Math.max(0, parseInt($('por').value, 10) || 0),
+      items: items.slice(), extraStorageGB: num('sto'), notifications: { sms: num('sms'), whatsapp: num('wa'), email: num('em') },
+      integrationHours: num('ih'), customisations: cust, billing: { type: billType, term: billType === 'perpetual' ? 'monthly' : billTerm },
+      discounts: num('disc') > 0 ? [{ label: 'Discount', pct: num('disc') }] : []
+    };
+  }
+  function renderOpts(){
+    $('opts').innerHTML = catalog.groups.map(function(g){
+      return '<h3>' + esc(g.name) + '</h3><div class="chk">' + catalog.items.filter(function(i){ return i.group === g.id; }).map(function(i){
+        var on = items.indexOf(i.id) > -1;
+        return '<label class="opt' + (on ? ' on' : '') + '"><input type="checkbox" data-item="' + i.id + '"' + (on ? ' checked' : '') + '><span><b>' + esc(i.name) + '</b></span></label>';
+      }).join('') + '</div>';
+    }).join('');
+  }
+  function hints(){
+    var e = parseInt($('emp').value, 10);
+    var b = catalog.bands.filter(function(x){ return e >= x.min && (x.max == null || e <= x.max); })[0];
+    $('bandHint').textContent = b ? 'Pricing band: ' + b.label : '';
+    $('seatHint').textContent = b ? b.seatsIncluded + ' seats included' : '';
+    $('stoHint').textContent = b && b.max ? 'Free pool: ' + (b.max * catalog.storage.freeMBPerEmployee / 1024).toFixed(1) + ' GB' : '';
+  }
+  function show(){
+    $('mk').disabled = !quote || quote.custom;
+    if (err) { $('sumBody').innerHTML = '<div class="err" style="padding:0 22px 12px">' + esc(err) + '</div>'; return; }
+    if (!quote) { $('sumBody').innerHTML = '<div style="padding:0 22px 12px" class="hint">Enter the number of employees to see the price.</div>'; return; }
+    if (quote.custom) { $('sumBody').innerHTML = '<div class="note" style="margin:0 22px 12px">This company size needs a custom quote. Please contact Victory Information.</div>'; return; }
+    var h = '<div class="hero"><small>' + (quote.billing.type === 'perpetual' ? 'Monthly usage + licence below' : 'Monthly subscription') + '</small><b>' + money(quote.monthlyRecurring) + '</b><span>Due at signing ' + money(quote.dueAtSigning) + ' · Band ' + esc(quote.band.label) + '</span></div>';
+    h += quote.lines.filter(function(l){ return !l.oneTime; }).map(function(l){ return '<div class="line"><span>' + esc(l.label) + '<small>' + esc(l.detail) + '</small></span><span>' + money(l.amount) + '</span></div>'; }).join('');
+    if (quote.discountMonthly > 0) h += '<div class="line"><span>Discount (' + quote.discountPct + '%)</span><span>−' + money(quote.discountMonthly) + '</span></div>';
+    var once = quote.lines.filter(function(l){ return l.oneTime; });
+    if (once.length) { h += '<h3>One-time</h3>' + once.map(function(l){ return '<div class="line"><span>' + esc(l.label) + '<small>' + esc(l.detail) + '</small></span><span>' + money(l.amount) + '</span></div>'; }).join(''); if (quote.discountOnce > 0) h += '<div class="line"><span>Discount</span><span>−' + money(quote.discountOnce) + '</span></div>'; }
+    if (quote.billing.type === 'perpetual') h += '<div class="line"><span>Licence fee</span><span>' + money(quote.billing.licence) + '</span></div><div class="line"><span>Annual maintenance</span><span>' + money(quote.billing.maintenanceAnnual) + '</span></div>';
+    h += '<div class="line total"><span>Due at signing</span><span>' + money(quote.dueAtSigning) + '</span></div>';
+    $('sumBody').innerHTML = '<div style="padding:0 22px 6px">' + h + '</div>';
+  }
+  function recalc(){
+    hints(); clearTimeout(qt);
+    qt = setTimeout(function(){
+      var my = ++seq, i = input();
+      if (!(i.employees >= 1)) { quote = null; err = ''; show(); return; }
+      PH.api('POST', '/api/quote', i).then(function(r){
+        if (my !== seq) return;
+        if (r.status === 200) { quote = r.json.quote; err = ''; } else { quote = null; err = r.json.error || 'Could not price this'; }
+        show();
+      });
+    }, 250);
+  }
+  function seg(id, cb){
+    $(id).addEventListener('click', function(e){ var b = e.target.closest('button'); if (!b) return; [].forEach.call($(id).children, function(c){ c.classList.toggle('on', c === b); }); cb(b.dataset.v); recalc(); });
+  }
+  seg('segType', function(v){ billType = v; $('termBox').hidden = v === 'perpetual'; });
+  seg('segTerm', function(v){ billTerm = v; });
+  ['emp','adm','por','sto','sms','wa','em','ih','ch','disc'].forEach(function(id){ $(id).addEventListener('input', recalc); });
+  $('same').addEventListener('click', function(e){ e.preventDefault(); $('por').value = $('emp').value; recalc(); });
+  $('opts').addEventListener('change', function(e){
+    var id = e.target.dataset.item; if (!id) return;
+    var k = items.indexOf(id); if (e.target.checked && k < 0) items.push(id); if (!e.target.checked && k > -1) items.splice(k, 1);
+    e.target.closest('.opt').classList.toggle('on', e.target.checked); recalc();
+  });
+  $('reset').addEventListener('click', function(){ location.reload(); });
+  $('mk').addEventListener('click', function(){
+    try { sessionStorage.setItem('ph_prefill', JSON.stringify(input())); } catch (e) {}
+    location.href = 'proposal.html';
+  });
+
+  PH.boot(function(user){
+    PH.api('GET', '/api/quote/catalog').then(function(r){
+      if (r.status !== 200) { $('sumBody').textContent = (r.json && r.json.error) || 'Could not load prices.'; return; }
+      catalog = r.json; renderOpts();
+      $('capHint').textContent = catalog.partnerCategory ? 'Your ' + catalog.partnerCategory + ' category allows up to ' + catalog.maxDiscountPct + '%.' : 'Core HR is never discounted.';
+      $('disc').max = catalog.maxDiscountPct; recalc();
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+/* The proposal document: shared by the editor, the PDF and the client web view. */
+/* ---------- proposal document ---------- */
+#docWrap { background:#fff; border:1px solid #dce7e2; border-radius:10px; overflow:hidden; color:#1f2d28; font-family:'Segoe UI',Arial,sans-serif; }
+.pg { padding:36px 44px; border-bottom:1px solid #e4ebe8; page-break-after:always; }
+.cover { background:#08110e; color:#fff; min-height:520px; display:flex; flex-direction:column; justify-content:space-between; }
+.cover .eyebrow { color:#10b981; text-transform:uppercase; letter-spacing:.14em; font-size:12px; font-weight:700; }
+.cover h1 { font-size:40px; line-height:1.1; margin:14px 0 8px; } .pg.cover p { color:#a9c4ba; max-width:560px; }
+.cover .who { display:grid; grid-template-columns:1fr 1fr; gap:28px; border-top:1px solid #1d3a30; padding-top:20px; }
+.cover .who small { color:#10b981; text-transform:uppercase; letter-spacing:.1em; font-size:11px; display:block; margin-bottom:4px; }
+.cover .meta { color:#a9c4ba; font-size:12px; display:flex; gap:22px; flex-wrap:wrap; }
+.pg h2 { color:#0b6b4f; font-size:20px; border-bottom:2px solid #dce7e2; padding-bottom:6px; margin-bottom:12px; }
+.pg h4 { margin:14px 0 4px; color:#0b6b4f; font-size:14px; } .pg p { color:#33463f; margin:0 0 8px; }
+.pg ul { margin:4px 0 10px; padding-left:20px; color:#33463f; }
+table.doc { width:100%; border-collapse:collapse; font-size:13px; margin:8px 0 12px; }
+table.doc th { background:#e8f3ee; color:#0b6b4f; text-align:left; padding:8px 10px; font-size:11px; text-transform:uppercase; letter-spacing:.05em; }
+table.doc td { padding:8px 10px; border-top:1px solid #dce7e2; vertical-align:top; } table.doc td.amt, table.doc th.amt { text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
+table.doc tr.sub td { font-weight:700; background:#f4faf7; } table.doc td small { color:#6b8178; display:block; }
+.big { background:#f4faf7; border:1px solid #cfe3da; border-radius:10px; padding:16px 20px; display:flex; gap:30px; flex-wrap:wrap; margin:10px 0; }
+.big div small { color:#6b8178; display:block; font-size:11px; text-transform:uppercase; letter-spacing:.06em; } .big div b { font-size:22px; color:#0b6b4f; }
+.sig { display:grid; grid-template-columns:1fr 1fr; gap:36px; margin-top:30px; } .sig div { border-top:1px solid #33463f; padding-top:6px; font-size:12px; color:#33463f; min-height:80px; }
+.plogo { max-height:46px; max-width:180px; margin-top:10px; background:#fff; padding:5px 8px; border-radius:6px; }
+.accepted { margin-top:26px; border:2px solid #10b981; background:#f1fbf6; border-radius:10px; padding:14px 18px; color:#0a6e4d; }
+.accepted small { color:#5d7168; }
+.docfoot { font-size:11px; color:#6b8178; margin-top:20px; }
+
+/* ---- long-form proposals: contents, part labels, module cards, charges at a glance ---- */
+.pg h3 { font-size:17px; color:#12233d; margin:4px 0 2px; }
+.pg h4 { margin:14px 0 4px; color:#0b6b4f; font-size:14px; }
+.partlabel { text-transform:uppercase; letter-spacing:.16em; font-size:11px; font-weight:800; color:#3b6be0; margin-bottom:4px; }
+.tocpart { margin:16px 0 4px; text-transform:uppercase; letter-spacing:.14em; font-size:11px; font-weight:800; color:#3b6be0; }
+.tocrow { display:flex; gap:14px; padding:5px 0; border-bottom:1px dashed #dce7e2; font-size:14px; } .tocrow .tn { width:26px; color:#6b8178; font-variant-numeric:tabular-nums; }
+.pillar { margin:14px 0 22px; } .pillar .pk { text-transform:uppercase; letter-spacing:.16em; font-size:10.5px; font-weight:800; color:#6b8178; }
+.pillar .ptag { font-style:italic; color:#33463f; margin:0 0 4px; }
+.mods { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-top:8px; }
+.mod { border:1px solid #dce7e2; border-radius:10px; padding:11px 13px; background:#fff; break-inside:avoid; }
+.mod .mh { display:flex; justify-content:space-between; gap:8px; align-items:flex-start; } .mod .mh b { font-size:13.5px; color:#12233d; }
+.mod .ms { margin:4px 0 4px; font-size:12.5px; color:#33463f; } .mod ul { margin:4px 0 0; padding-left:18px; font-size:12px; color:#33463f; } .mod li { margin:2px 0; }
+.mod .mi { margin-top:6px; font-size:12px; color:#0b6b4f; font-weight:600; }
+.mod.in { border-color:#10b981; background:#f1fbf6; box-shadow:0 0 0 1px #10b981 inset; } .mod.core { border-color:#c9dbe9; background:#f6faff; } .mod.avail { background:#fafbfa; color:#6b8178; border-style:dashed; }
+.mod.avail .mh b { color:#52627f; } .mod.avail .ms { color:#6b8178; }
+.chip { font-size:10px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; padding:2px 8px; border-radius:99px; white-space:nowrap; background:#e3e8ee; color:#52627f; }
+.chip.in { background:#10b981; color:#fff; } .chip.core { background:#dbeafe; color:#1d4ed8; }
+.glance { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:8px 0 14px; } .gcol { border:1px solid #dce7e2; border-radius:10px; padding:12px 14px; break-inside:avoid; }
+.gcol h5 { margin:0 0 6px; font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:#0b6b4f; } .gcol ul { margin:0; padding-left:16px; font-size:12.5px; } .gcol li { margin:3px 0; }
+table.mini { width:100%; border-collapse:collapse; font-size:12.5px; } table.mini td { padding:4px 0; border-top:1px solid #edf2ef; } table.mini td.amt { text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
+.hint2 { font-size:12px; color:#6b8178; margin:2px 0 6px; }
+@media (max-width:680px) { .mods, .glance { grid-template-columns:1fr; } }
+
+/* ---- fixes: the app's own ".sub" and heading styles must not leak into the paper document ---- */
+table.doc tr.sub { display: table-row; margin: 0; gap: 0; color: inherit; font-size: inherit; }
+table.doc tr.sub td { color: #0b3d2e; font-weight: 700; background: #f1f8f4; }
+.pg h3 { text-transform: none; letter-spacing: 0; font-size: 19px; color: #12233d; margin: 2px 0 2px; }
+.pg h4 { text-transform: none; letter-spacing: 0; }
+.glance { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.glance .gcol:first-child { grid-column: 1 / -1; }
+.glance .gcol:first-child ul { columns: 2; column-gap: 28px; }
+table.mini td:first-child { padding-right: 10px; }
+.pg figure { margin: 12px 0; text-align: center; break-inside: avoid; } .pg figure img { max-width: 100%; max-height: 280px; border-radius: 6px; } .pg figcaption { font-size: 11.5px; color: #5a6b64; margin-top: 4px; } .pg a { color: #0b6b4f; }

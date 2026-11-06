@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Dashboard</title>
+<style>
+  /* chart colour roles: one hue for magnitude, status colours only for status (always with a label) */
+  .viz { --bar:#5b8cff; --bar-soft:rgba(110,160,255,.25); --grid:rgba(255,255,255,.1); --axis:rgba(255,255,255,.35); --ink:var(--text); --ink2:var(--muted); }
+  :root[data-theme="light"] .viz { --bar:#2f57c9; --bar-soft:rgba(47,87,201,.18); --grid:rgba(15,23,42,.1); --axis:rgba(15,23,42,.35); }
+  .greet { display:flex; gap:14px; align-items:flex-end; flex-wrap:wrap; margin-bottom:20px; }
+  .greet h1 { font-size:34px; } .greet p { margin:2px 0 0; color:var(--muted); } .greet .sp { flex:1; }
+  .tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin-bottom:18px; }
+  .tile { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; box-shadow:var(--shadow); text-decoration:none; color:inherit; display:block; transition:border-color .15s, box-shadow .15s; }
+  a.tile:hover { border-color:var(--accent-bd); box-shadow:var(--shadow-lg); }
+  /* each headline number gets its own colour, like the module columns in the presentation */
+  .tile { --c: var(--c-blue); border-top:3px solid var(--c); position:relative; overflow:hidden; }
+  .tile::after { content:""; position:absolute; right:-40px; top:-40px; width:130px; height:130px; border-radius:50%; background:radial-gradient(circle, var(--c), transparent 70%); opacity:.22; pointer-events:none; }
+  .tiles .tile:nth-child(6n+1) { --c:var(--c-blue); } .tiles .tile:nth-child(6n+2) { --c:var(--c-green); } .tiles .tile:nth-child(6n+3) { --c:var(--c-purple); }
+  .tiles .tile:nth-child(6n+4) { --c:var(--c-amber); } .tiles .tile:nth-child(6n+5) { --c:var(--c-cyan); } .tiles .tile:nth-child(6n) { --c:var(--c-rose); }
+  a.tile:hover { box-shadow:0 18px 44px -18px var(--c); border-color:var(--c); }
+  .tile b.v { font-family:"Fraunces", Georgia, serif; font-weight:700; letter-spacing:-.02em; }
+  .card h2 { font-size:16px; }
+  .tile small.k { display:block; color:var(--muted); font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+  .tile b.v { display:block; font-size:30px; letter-spacing:-.03em; line-height:1.15; margin:4px 0 2px; font-variant-numeric:tabular-nums; }
+  .tile .s { color:var(--muted); font-size:12.5px; } .tile .s b { color:var(--ink); }
+  .flag { display:inline-flex; align-items:center; gap:5px; font-weight:700; font-size:12px; padding:2px 9px; border-radius:99px; }
+  .flag.bad { background:var(--bad-bg); color:var(--bad-fg); } .flag.warn { background:var(--warn-bg); color:var(--warn-fg); } .flag.ok { background:var(--ok-bg); color:var(--ok-fg); }
+  .grid2 { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; margin-bottom:18px; } @media (max-width:1000px){ .grid2 { grid-template-columns:1fr; } }
+  .grid3 { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; margin-bottom:18px; } @media (max-width:1200px){ .grid3 { grid-template-columns:repeat(2,minmax(0,1fr)); } } @media (max-width:760px){ .grid3 { grid-template-columns:1fr; } }
+  .card h2 { display:flex; justify-content:space-between; align-items:baseline; gap:10px; } .card h2 a { font-size:12.5px; font-weight:650; }
+  .li { display:flex; gap:12px; align-items:center; padding:10px 0; border-top:1px solid var(--border); } .li:first-of-type { border-top:none; }
+  .li .m { flex:1; min-width:0; } .li b { display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:650; } .li small { color:var(--muted); font-size:12.5px; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .li a { color:inherit; text-decoration:none; } .li a:hover b { text-decoration:underline; }
+  .int { display:inline-block; padding:2px 10px; border-radius:99px; font-size:12px; font-weight:800; white-space:nowrap; }
+  .int.Hot { background:var(--bad-bg); color:var(--bad-fg); } .int.Warm { background:var(--warn-bg); color:var(--warn-fg); } .int.Cold { background:var(--info-bg); color:var(--info-fg); }
+  .due { font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:99px; background:var(--neu-bg); color:var(--neu-fg); white-space:nowrap; } .due.over { background:var(--bad-bg); color:var(--bad-fg); } .due.now { background:var(--warn-bg); color:var(--warn-fg); }
+  .empty { color:var(--muted); padding:18px 0; font-size:13.5px; text-align:center; }
+  .chart { width:100%; } .chart svg { width:100%; height:auto; display:block; overflow:visible; }
+  .chart text { font:13px/1 Inter,"Segoe UI",sans-serif; fill:var(--ink2); } .chart text.val { fill:var(--ink); font-weight:700; }
+  .chart .hit { fill:transparent; cursor:default; } .chart .hit:hover + .mark, .chart .g:hover .mark { opacity:.85; }
+  .tip { position:fixed; z-index:90; pointer-events:none; background:var(--ink); color:#fff; border-radius:9px; padding:7px 11px; font-size:12.5px; box-shadow:0 8px 24px rgba(0,0,0,.25); opacity:0; transition:opacity .08s; max-width:240px; }
+  .tip b { display:block; } .tip span { color:var(--muted); }
+  details.tbl { margin-top:8px; } details.tbl summary { cursor:pointer; color:var(--muted); font-size:12.5px; font-weight:650; }
+  details.tbl table { margin-top:6px; font-size:12.5px; }
+  .ev { display:flex; gap:12px; padding:9px 0; border-top:1px solid var(--border); font-size:13.5px; } .ev:first-of-type { border-top:none; }
+  .ev i { flex:none; width:30px; height:30px; border-radius:50%; background:var(--soft); color:var(--accent-d); display:grid; place-items:center; font-style:normal; font-weight:800; font-size:13px; }
+  .ev i.red { background:var(--bad-bg); color:var(--bad-fg); } .ev i.blue { background:var(--info-bg); color:var(--info-fg); } .ev i.amber { background:var(--warn-bg); color:var(--warn-fg); }
+  .ev small { color:var(--muted); display:block; font-size:12px; } .ev a { color:inherit; font-weight:650; }
+  .ring { --p:0; width:92px; height:92px; border-radius:50%; background:conic-gradient(var(--bar) calc(var(--p) * 1%), var(--s3) 0); display:grid; place-items:center; flex:none; }
+  .ring span { width:70px; height:70px; border-radius:50%; background:var(--panel); display:grid; place-items:center; font-weight:800; font-size:22px; letter-spacing:-.02em; }
+  .qa { display:flex; gap:8px; flex-wrap:wrap; }
+</style>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem("ph-theme")||"dark"}catch(e){}</script>
+<link rel="stylesheet" href="ui.css">
+</head>
+<body>
+<div id="gate"><div class="box">
+  <h2>PeopleHub Proposal Studio</h2><div class="hint">Sign in with your PeopleHub login.</div>
+  <input type="text" id="gUser" placeholder="Username" autocomplete="username">
+  <input type="password" id="gPass" placeholder="Password" autocomplete="current-password">
+  <div class="err" id="gErr"></div><button class="primary" id="gGo">Log in</button>
+</div></div>
+
+<div class="wrap viz">
+  <div class="greet"><div><h1 id="hello">Dashboard</h1><p id="dateLine"></p></div><div class="sp"></div>
+    <div class="qa"><a href="proposal.html" style="text-decoration:none"><button class="primary">+ New proposal</button></a><a href="leads.html" style="text-decoration:none"><button>+ New lead</button></a><a href="price-checker.html" style="text-decoration:none"><button>Price checker</button></a></div></div>
+
+  <div class="tiles" id="tiles"></div>
+
+  <div class="grid2">
+    <div class="card"><h2>Business won each month <span class="hint" style="margin:0">monthly value, last 6 months</span></h2><div class="chart" id="cWon"></div><details class="tbl" id="tWon"></details></div>
+    <div class="card"><h2>Lead pipeline <a href="leads.html">Open leads →</a></h2><div class="chart" id="cLeads"></div><details class="tbl" id="tLeads"></details></div>
+  </div>
+
+  <div class="grid3">
+    <div class="card"><h2>Proposals to chase <a href="proposals.html">All proposals →</a></h2><div id="hot"></div></div>
+    <div class="card"><h2>My follow-ups <a href="followups.html">See all →</a></h2><div id="tasks"></div></div>
+    <div class="card"><h2>Expiring within 7 days</h2><div id="expiring"></div></div>
+  </div>
+
+  <div class="grid2">
+    <div class="card"><h2>Recent activity</h2><div id="activity"></div></div>
+    <div class="card" id="sideCard"><h2 id="sideTitle"></h2><div id="side"></div></div>
+  </div>
+</div>
+<div class="tip" id="tip"></div>
+
+<script src="shell.js"></script>
+<script src="app.js"></script>
+<script>
+(function(){
+  var $ = PH.$, esc = PH.esc, money = PH.money;
+  var tip = $('tip');
+  function m0(n){ return '$' + Math.round(n || 0).toLocaleString('en-US'); }
+  function today(){ return new Date().toLocaleDateString('en-CA'); }
+  function ago(d){ var s = (Date.now() - new Date(d)) / 1000; if (s < 90) return 'just now'; if (s < 3600) return Math.round(s / 60) + ' min ago'; if (s < 86400) return Math.round(s / 3600) + ' h ago'; return Math.round(s / 86400) + ' d ago'; }
+  function dueChip(d){ var s = String(d).slice(0, 10), t = today(); return '<span class="due ' + (s < t ? 'over' : s === t ? 'now' : '') + '">' + (s < t ? 'Overdue ' : s === t ? 'Today' : '') + (s === t ? '' : new Date(s + 'T00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })) + '</span>'; }
+
+  // ---- tooltips: one small floating box shared by every mark
+  function showTip(e, html){ tip.innerHTML = html; tip.style.opacity = 1; var x = Math.min(window.innerWidth - 250, e.clientX + 14), y = e.clientY + 16; tip.style.left = x + 'px'; tip.style.top = y + 'px'; }
+  function hideTip(){ tip.style.opacity = 0; }
+  document.addEventListener('mousemove', function(e){ var t = e.target.closest && e.target.closest('[data-tip]'); if (t) showTip(e, t.getAttribute('data-tip')); else hideTip(); });
+
+  // ---- column chart: one series, one hue, rounded data ends sitting on the baseline, key values labelled, hover for the rest
+  function columns(el, rows, fmt, unit){
+    var W = 480, H = 210, L = 8, R = 8, T = 28, B = 32, n = rows.length, max = Math.max.apply(null, rows.map(function(r){ return r.v; }).concat([1]));
+    var slot = (W - L - R) / n, bw = Math.min(46, slot * 0.58), best = rows.reduce(function(b, r, i){ return r.v > rows[b].v ? i : b; }, 0);
+    var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(unit) + ' by period">';
+    [0, 0.5, 1].forEach(function(f){ var y = T + (H - T - B) * (1 - f); svg += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y + '" y2="' + y + '" stroke="' + (f === 0 ? 'var(--axis)' : 'var(--grid)') + '" stroke-width="' + (f === 0 ? 1.5 : 1) + '"/>'; });
+    rows.forEach(function(r, i){
+      var h = max ? (H - T - B) * r.v / max : 0, x = L + slot * i + (slot - bw) / 2, y = H - B - h, tipHtml = '<b>' + esc(r.label) + '</b>' + esc(fmt(r.v)) + (r.sub ? '<span> · ' + esc(r.sub) + '</span>' : '');
+      svg += '<g class="g">';
+      if (h > 0) svg += '<path class="mark" d="M' + x + ' ' + (H - B) + 'V' + (y + 4) + 'a4 4 0 0 1 4 -4h' + (bw - 8) + 'a4 4 0 0 1 4 4V' + (H - B) + 'Z" fill="' + (i === rows.length - 1 ? 'var(--bar)' : 'var(--bar)') + '"/>';
+      else svg += '<rect x="' + x + '" y="' + (H - B - 2) + '" width="' + bw + '" height="2" rx="1" fill="var(--bar-soft)"/>';
+      if (r.v > 0 && (i === best || i === rows.length - 1)) svg += '<text class="val" x="' + (x + bw / 2) + '" y="' + (y - 7) + '" text-anchor="middle">' + esc(fmt(r.v)) + '</text>';
+      svg += '<text x="' + (x + bw / 2) + '" y="' + (H - 10) + '" text-anchor="middle">' + esc(r.label) + '</text>';
+      svg += '<rect class="hit" x="' + (L + slot * i) + '" y="' + T + '" width="' + slot + '" height="' + (H - T) + '" data-tip="' + esc(tipHtml) + '"/></g>';
+    });
+    el.innerHTML = svg + '</svg>';
+  }
+
+  // ---- funnel: stages are ordered, so one hue stepping from light to dark; every bar is labelled with its name and count
+  function funnel(el, rows){
+    var W = 480, rowH = 38, H = rows.length * rowH + 6, labelW = 88, max = Math.max.apply(null, rows.map(function(r){ return r.n; }).concat([1]));
+    var steps = ['#3b6be0', '#4a86ec', '#22a6e6', '#22d3ee', '#34d399', '#a3e635'];
+    var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Leads by stage">';
+    rows.forEach(function(r, i){
+      var y = i * rowH + 4, w = Math.max(r.n ? 6 : 0, (W - labelW - 110) * r.n / max), tipHtml = '<b>' + esc(r.name) + '</b>' + r.n + ' lead' + (r.n === 1 ? '' : 's') + (r.value ? '<span> · ' + esc(m0(r.value)) + '/mo expected</span>' : '');
+      svg += '<g class="g"><text x="0" y="' + (y + 20) + '">' + esc(r.name) + '</text>';
+      if (r.n) svg += '<path class="mark" d="M' + labelW + ' ' + (y + 4) + 'H' + (labelW + w - 4) + 'a4 4 0 0 1 4 4v14a4 4 0 0 1 -4 4H' + labelW + 'Z" fill="' + steps[i] + '"/>';
+      else svg += '<rect x="' + labelW + '" y="' + (y + 13) + '" width="3" height="6" rx="1.5" fill="var(--axis)"/>';
+      svg += '<text class="val" x="' + (labelW + w + 8) + '" y="' + (y + 20) + '">' + r.n + (r.value ? '  ·  ' + esc(m0(r.value)) : '') + '</text>';
+      svg += '<rect class="hit" x="0" y="' + y + '" width="' + W + '" height="' + rowH + '" data-tip="' + esc(tipHtml) + '"/></g>';
+    });
+    el.innerHTML = svg + '</svg>';
+  }
+
+  function table(el, head, rows){ el.innerHTML = '<summary>View as a table</summary><table><thead><tr>' + head.map(function(h){ return '<th>' + esc(h) + '</th>'; }).join('') + '</tr></thead><tbody>' + rows.map(function(r){ return '<tr>' + r.map(function(c){ return '<td>' + esc(c) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table>'; }
+
+  function render(d, me){
+    var name = me.displayName || (me.partner && me.partner.company) || me.username, h = new Date().getHours();
+    $('hello').innerHTML = (h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening') + ', <span class="grad-text">' + esc(String(name).split(' ')[0]) + '</span>';
+    $('dateLine').textContent = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+    var t = d.tasks || {}, tiles = [];
+    tiles.push('<a class="tile" href="proposals.html"><small class="k">Out with clients</small><b class="v">' + m0(d.pipeline.monthly) + '</b><div class="s"><b>' + d.pipeline.count + '</b> proposal' + (d.pipeline.count === 1 ? '' : 's') + ' per month' + (d.pipeline.notOpened ? ' · <span class="flag warn">' + d.pipeline.notOpened + ' not opened</span>' : '') + '</div></a>');
+    tiles.push('<a class="tile" href="proposals.html"><small class="k">Draft proposals</small><b class="v">' + (d.drafts || 0) + '</b><div class="s">not sent yet</div></a>');
+    tiles.push('<a class="tile" href="proposals.html"><small class="k">Won this month</small><b class="v">' + m0(d.wonMonth.monthly) + '</b><div class="s"><b>' + d.wonMonth.n + '</b> deal' + (d.wonMonth.n === 1 ? '' : 's') + ' · ' + m0(d.wonMonth.year1) + ' first-year value</div></a>');
+    tiles.push('<div class="tile"><small class="k">Win rate, 12 months</small><b class="v">' + (d.won12.rate == null ? '—' : d.won12.rate + '%') + '</b><div class="s">' + (d.won12.rate == null ? 'No decided proposals yet' : '<b>' + d.won12.wins + '</b> won of ' + (d.won12.wins + d.won12.lost) + ' decided') + '</div></div>');
+    tiles.push('<a class="tile" href="followups.html"><small class="k">Follow-ups for you</small><b class="v">' + ((t.overdue || 0) + (t.today || 0)) + '</b><div class="s">' + (t.overdue ? '<span class="flag bad">⚠ ' + t.overdue + ' overdue</span> ' : '') + (t.today ? '<span class="flag warn">' + t.today + ' due today</span>' : (t.overdue ? '' : '<span class="flag ok">✓ All caught up</span>')) + '</div></a>');
+    if (d.commissions) tiles.push('<a class="tile" href="commissions.html"><small class="k">Commission</small><b class="v">' + m0(d.commissions.paid) + '</b><div class="s">paid · <b>' + m0(d.commissions.pending + d.commissions.approved) + '</b> on the way</div></a>');
+    if (d.rating) tiles.push('<a class="tile" href="rating.html"><small class="k">Your partner rating</small><b class="v">' + d.rating.score.toFixed(0) + '<span style="font-size:15px;color:var(--muted);font-weight:600"> / 100</span></b><div class="s"><b>#' + d.rating.rank + '</b> of ' + d.rating.of + ' · ' + esc(d.rating.label) + '</div></a>');
+    if (d.pendingApprovals != null) tiles.push('<a class="tile" href="approvals.html"><small class="k">Discount approvals</small><b class="v">' + d.pendingApprovals + '</b><div class="s">' + (d.pendingApprovals ? '<span class="flag warn">waiting for a decision</span>' : '<span class="flag ok">✓ none waiting</span>') + '</div></a>');
+    $('tiles').innerHTML = tiles.join('');
+
+    var mrows = d.monthly.map(function(x){ return { label: x.label, v: x.v, sub: x.n + ' deal' + (x.n === 1 ? '' : 's') }; });
+    columns($('cWon'), mrows, m0, 'Monthly value won');
+    table($('tWon'), ['Month', 'Monthly value won', 'Deals'], d.monthly.map(function(x){ return [x.label, m0(x.v), x.n]; }));
+    var NAMES = { new: 'New', contacted: 'Contacted', qualified: 'Qualified', proposal: 'Proposal', won: 'Won', lost: 'Lost' };
+    var lrows = d.leads.filter(function(x){ return x.stage !== 'lost'; }).map(function(x){ return { name: NAMES[x.stage], n: x.n, value: x.value }; });
+    funnel($('cLeads'), lrows);
+    var lost = d.leads.filter(function(x){ return x.stage === 'lost'; })[0];
+    table($('tLeads'), ['Stage', 'Leads', 'Expected monthly'], d.leads.map(function(x){ return [NAMES[x.stage], x.n, m0(x.value)]; }));
+    if (lost && lost.n) $('tLeads').insertAdjacentHTML('beforebegin', '<div class="hint" style="margin-top:4px">' + lost.n + ' lead' + (lost.n === 1 ? '' : 's') + ' lost, not shown above.</div>');
+
+    $('hot').innerHTML = d.hot.length ? d.hot.map(function(x){ return '<div class="li"><div class="m"><a href="proposal.html?open=' + x.id + '"><b>' + esc(x.customer) + '</b></a><small>' + esc(x.why.join(' · ') || x.ref_no) + '</small></div><span class="int ' + esc(x.label) + '">' + esc(x.label) + ' ' + x.score + '</span></div>'; }).join('') : (d.pipeline.count ? '<div class="empty">None of your ' + d.pipeline.count + ' proposal' + (d.pipeline.count === 1 ? ' has' : 's have') + ' been opened yet. The ones showing interest will appear here.</div>' : '<div class="empty">Nothing is out with clients yet. Send a proposal and the most promising ones appear here.</div>');
+    $('tasks').innerHTML = (t.next || []).length ? t.next.map(function(x){ return '<div class="li"><div class="m"><a href="' + (x.lead_id ? 'lead.html?id=' + x.lead_id : 'followups.html') + '"><b>' + esc(x.title) + '</b></a><small>' + esc(x.lead_name || x.type.replace('_', ' ')) + '</small></div>' + dueChip(x.due_date) + '</div>'; }).join('') : '<div class="empty">No open follow-ups. Add one to a lead so it does not go cold.</div>';
+    $('expiring').innerHTML = d.expiring.length ? d.expiring.map(function(x){ var days = Math.max(0, Math.ceil((new Date(x.expires_at) - Date.now()) / 86400000)); return '<div class="li"><div class="m"><a href="proposal.html?open=' + x.id + '"><b>' + esc(x.customer) + '</b></a><small>' + esc(x.ref_no) + ' · ' + m0(x.monthly) + '/mo</small></div><span class="due ' + (days <= 2 ? 'over' : 'now') + '">' + (days === 0 ? 'Today' : days + ' day' + (days === 1 ? '' : 's')) + '</span></div>'; }).join('') : '<div class="empty">Nothing is about to expire.</div>';
+
+    var icon = function(e){ if (e.type === 'client_request') return ['!', 'amber']; if (e.type === 'emailed') return ['✉', 'blue']; if (e.to_status === 'accepted') return ['✓', '']; if (e.to_status === 'lost') return ['✕', 'red']; if (e.to_status === 'viewed') return ['👁', 'blue']; return ['•', '']; };
+    var label = function(e){ if (e.type === 'client_request') return 'asked to talk'; if (e.type === 'emailed') return 'emailed to ' + esc(e.note || 'the client'); return ({ sent: 'marked as sent', viewed: 'opened by the client', negotiating: 'moved to negotiating', accepted: 'accepted', lost: 'marked as lost' })[e.to_status] || e.to_status; };
+    $('activity').innerHTML = d.activity.length ? d.activity.map(function(e){ var ic = icon(e); return '<div class="ev"><i class="' + ic[1] + '">' + ic[0] + '</i><div><a href="proposal.html?open=' + e.proposal_id + '">' + esc(e.customer) + '</a> ' + label(e) + '<small>' + esc(e.ref_no) + ' · ' + ago(e.created_at) + (e.by_user ? ' · ' + esc(e.by_user) : '') + '</small></div></div>'; }).join('') : '<div class="empty">Activity appears here as proposals are sent, opened and decided.</div>';
+
+    if (d.topPartners) {
+      $('sideTitle').innerHTML = 'Top partners <a href="rating.html">Leaderboard →</a>';
+      $('side').innerHTML = (d.topPartners.length ? d.topPartners.map(function(x){ return '<div class="li"><b style="flex:none;width:22px;color:var(--muted)">' + x.rank + '</b><div class="m"><b>' + esc(x.company) + '</b><small>' + esc(x.category) + '</small></div><span><b style="display:inline">' + x.score.toFixed(0) + '</b> <small style="display:inline">' + esc(x.label) + '</small></span></div>'; }).join('') : '<div class="empty">No partners yet.</div>') +
+        '<div class="hint" style="margin-top:10px">' + d.partnerCount + ' active partner' + (d.partnerCount === 1 ? '' : 's') + (d.tierSuggestions ? ' · <a href="rating.html">' + d.tierSuggestions + ' tier suggestion' + (d.tierSuggestions === 1 ? '' : 's') + ' to review</a>' : '') + ' · ' + m0(d.pendingCommissions) + ' commission to pay</div>';
+    } else if (d.rating) {
+      $('sideTitle').innerHTML = 'Your standing <a href="rating.html">Details →</a>';
+      $('side').innerHTML = '<div style="display:flex;gap:18px;align-items:center"><div class="ring" style="--p:' + Math.round(d.rating.score) + '"><span>' + d.rating.score.toFixed(0) + '</span></div><div><div style="font-weight:700;font-size:16px">' + esc(d.rating.label) + ' · #' + d.rating.rank + ' of ' + d.rating.of + '</div>' + (d.rating.trend != null ? '<div class="hint" style="margin:2px 0">' + (d.rating.trend >= 0 ? '▲ +' : '▼ ') + d.rating.trend.toFixed(1) + ' points in 30 days</div>' : '') + (d.rating.tip ? '<div style="font-size:13.5px;margin-top:6px"><b>Next step:</b> ' + esc(d.rating.tip) + '</div>' : '') + '</div></div>' + (d.myApprovals ? '<div class="hint" style="margin-top:12px"><span class="flag warn">' + d.myApprovals + ' discount request' + (d.myApprovals === 1 ? '' : 's') + ' waiting for Victory</span></div>' : '');
+    } else $('sideCard').hidden = true;
+  }
+
+  PH.boot(function(user){
+    function load(){
+      PH.api('GET', '/api/dashboard').then(function(r){
+        if (r.status !== 200) { $('tiles').innerHTML = '<div class="card">' + esc((r.json && r.json.error) || 'Could not load the dashboard.') + '</div>'; return; }
+        render(r.json, user);
+      });
+    }
+    load(); setInterval(function(){ if (!document.hidden) load(); }, 30000);
+  });
+})();
+</script>
+</body>
+</html>

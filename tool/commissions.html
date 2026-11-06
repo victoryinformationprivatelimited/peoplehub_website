@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Commissions</title>
+<style>
+  .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; margin-bottom:18px; }
+  .stat { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px; box-shadow:var(--shadow); }
+  .stat small { color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.08em; font-weight:700; display:block; } .stat b { font-size:26px; letter-spacing:-.02em; font-variant-numeric:tabular-nums; } .stat span { color:var(--muted); font-size:12.5px; display:block; }
+  .st { display:inline-block; padding:3px 11px; border-radius:99px; font-size:12px; font-weight:700; text-transform:capitalize; background:var(--neu-bg); color:var(--neu-fg); }
+  .st.approved { background:var(--info-bg); color:var(--info-fg); } .st.paid { background:var(--ok-bg); color:var(--ok-fg); } .st.pending { background:var(--warn-bg); color:var(--warn-fg); } .st.void { background:var(--neu-bg); color:var(--muted); text-decoration:line-through; }
+  td.n { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .empty { text-align:center; padding:44px 20px; color:var(--muted); }
+</style>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem("ph-theme")||"dark"}catch(e){}</script>
+<link rel="stylesheet" href="ui.css">
+</head>
+<body>
+<div id="gate"><div class="box">
+  <h2>Commissions</h2><div class="hint">Sign in with your PeopleHub login.</div>
+  <input type="text" id="gUser" placeholder="Username" autocomplete="username">
+  <input type="password" id="gPass" placeholder="Password" autocomplete="current-password">
+  <div class="err" id="gErr"></div><button class="primary" id="gGo">Log in</button>
+</div></div>
+
+<div class="wrap">
+  <div class="top"><h1>Commissions</h1></div>
+  <div class="sub" id="subLine">Earned when a client accepts a proposal. The percentage depends on the partner category and applies to the first-year value.</div>
+  <div class="stats" id="stats"></div>
+  <div class="card"><div class="table-wrap"><table><thead><tr><th>Proposal</th><th>Customer</th><th id="thPartner" hidden>Partner</th><th class="n" style="text-align:right">First-year value</th><th class="n" style="text-align:right">Rate</th><th class="n" style="text-align:right">Commission</th><th>Status</th><th id="thAct" hidden></th></tr></thead><tbody id="rows"></tbody></table></div><div class="empty" id="empty" hidden>No commissions yet. They appear when a client accepts one of your proposals.</div></div>
+</div>
+
+<script src="shell.js"></script>
+<script src="app.js"></script>
+<script>
+(function(){
+  var $ = PH.$, esc = PH.esc, money = PH.money, me = null;
+  function load(){
+    PH.api('GET', '/api/commissions').then(function(r){
+      var rows = (r.json || {}).rows || [], t = (r.json || {}).totals || {}, staff = me.role !== 'partner';
+      $('stats').innerHTML = [['Awaiting approval', t.pending, 'earned, not yet approved'], ['Approved', t.approved, 'ready to be paid'], ['Paid', t.paid, 'received']].map(function(s){ return '<div class="stat"><small>' + s[0] + '</small><b>' + money(s[1] || 0) + '</b><span>' + s[2] + '</span></div>'; }).join('');
+      $('thPartner').hidden = !staff; $('thAct').hidden = me.role !== 'admin';
+      $('empty').hidden = rows.length > 0;
+      $('rows').innerHTML = rows.map(function(x){
+        return '<tr><td><b>' + esc(x.ref_no) + '</b></td><td>' + esc(x.customer) + '</td>' + (staff ? '<td>' + esc(x.partner_name) + '</td>' : '') + '<td class="n">' + money(x.base_amount) + '</td><td class="n">' + x.pct + '%</td><td class="n"><b>' + money(x.amount) + '</b></td><td><span class="st ' + esc(x.status) + '">' + esc(x.status) + '</span>' + (x.note ? '<div class="hint" style="margin:2px 0 0">' + esc(x.note) + '</div>' : '') + '</td>' +
+          (me.role === 'admin' ? '<td style="white-space:nowrap">' + (x.status === 'pending' ? '<button data-s="approved" data-id="' + x.id + '">Approve</button> ' : '') + (x.status === 'approved' ? '<button class="primary" data-s="paid" data-id="' + x.id + '">Mark paid</button> ' : '') + (x.status !== 'void' && x.status !== 'paid' ? '<button class="link danger" data-s="void" data-id="' + x.id + '">Void</button>' : '') + '</td>' : '') + '</tr>';
+      }).join('');
+    });
+  }
+  $('rows').addEventListener('click', function(e){
+    var b = e.target.closest('[data-s]'); if (!b) return;
+    var note = b.dataset.s === 'paid' ? prompt('Payment note (e.g. bank transfer reference):', '') : null;
+    if (b.dataset.s === 'paid' && note === null) return;
+    if (b.dataset.s === 'void' && !confirm('Void this commission?')) return;
+    PH.api('PUT', '/api/commissions/' + b.dataset.id, { status: b.dataset.s, note: note || undefined }).then(load);
+  });
+  PH.boot(function(user){ me = user; load(); });
+})();
+</script>
+</body>
+</html>

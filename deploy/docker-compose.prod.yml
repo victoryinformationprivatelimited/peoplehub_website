@@ -1,0 +1,65 @@
+# PeopleHub Proposal Studio on a real server: app + PostgreSQL + Caddy (automatic HTTPS).
+# Nothing is published except ports 80 and 443. The database and the app are reachable only through Caddy.
+#
+# From the Website folder on the server:
+#   docker compose -f deploy/docker-compose.prod.yml --env-file api/.env up -d --build
+# See deploy/DEPLOY.md for the full checklist.
+name: peoplehub-studio
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - pricing-data:/var/lib/postgresql/data
+      # Creates the tables the first time the data volume is empty
+      - ../api/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - ../api/.env
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      COOKIE_SECURE: "true"
+    volumes:
+      # The built sales deck (copy it to ./present on the server, see DEPLOY.md)
+      - ../present:/app/present:ro
+    expose:
+      - "4400"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  pricing-data:
+  caddy-data:
+  caddy-config:

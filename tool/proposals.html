@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Proposals</title>
+<style>
+  .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; margin-bottom:18px; }
+  .stat { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px; box-shadow:var(--shadow); }
+  .stat small { color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.08em; font-weight:700; display:block; }
+  .stat b { font-size:26px; letter-spacing:-.02em; font-variant-numeric:tabular-nums; } .stat span { color:var(--muted); font-size:12.5px; display:block; }
+  .chips2 { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+  .chip { border:1.5px solid var(--border); background:var(--surface); border-radius:99px; padding:6px 14px; font-weight:650; font-size:13px; cursor:pointer; color:var(--muted); }
+  .chip b { margin-left:6px; background:var(--s3); border-radius:99px; padding:0 8px; font-size:12px; color:var(--text); }
+  .chip.on { background:var(--ink); border-color:var(--ink); color:#fff; } .chip.on b { background:rgba(255,255,255,.18); color:#fff; }
+  .toolbar { display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:6px; }
+  .toolbar input { max-width:340px; }
+  tr.row-link { cursor:pointer; } tr.row-link:hover td { background:var(--hover); }
+  .st { display:inline-block; padding:3px 11px; border-radius:99px; font-size:12px; font-weight:700; text-transform:capitalize; background:var(--neu-bg); color:var(--neu-fg); }
+  .st.sent, .st.viewed { background:var(--info-bg); color:var(--info-fg); } .st.negotiating { background:var(--warn-bg); color:var(--warn-fg); }
+  .st.accepted { background:var(--ok-bg); color:var(--ok-fg); } .st.lost { background:var(--bad-bg); color:var(--bad-fg); } .st.superseded { background:var(--neu-bg); color:var(--muted); text-decoration:line-through; }
+  .ver { font-size:11px; font-weight:700; background:var(--soft); color:var(--accent-d); border-radius:6px; padding:1px 7px; margin-left:6px; }
+  td.n { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .int { display:inline-block; padding:2px 10px; border-radius:99px; font-size:12px; font-weight:800; }
+  .int.Hot { background:var(--bad-bg); color:var(--bad-fg); } .int.Warm { background:var(--warn-bg); color:var(--warn-fg); } .int.Cold { background:var(--info-bg); color:var(--info-fg); } .int.Waiting, .int.Draft, .int.Replaced { background:var(--neu-bg); color:var(--neu-fg); } .int.Won { background:var(--ok-bg); color:var(--ok-fg); } .int.Lost { background:var(--neu-bg); color:var(--muted); }
+  .follow { background:linear-gradient(135deg,var(--ink),var(--hero-end)); color:#fff; border-radius:var(--radius); padding:18px 22px; margin-bottom:18px; }
+  .follow h2 { color:#fff; font-size:16px; margin:0 0 4px; } .follow .it { display:flex; gap:12px; align-items:baseline; padding:8px 0; border-top:1px solid rgba(255,255,255,.12); cursor:pointer; flex-wrap:wrap; }
+  .follow .it:first-of-type { border-top:none; } .follow small { color:var(--muted); } .follow b { color:#fff; }
+  .empty { text-align:center; padding:50px 20px; color:var(--muted); }
+</style>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem("ph-theme")||"dark"}catch(e){}</script>
+<link rel="stylesheet" href="ui.css">
+</head>
+<body>
+<div id="gate"><div class="box">
+  <h2>Proposals</h2><div class="hint">Sign in with your PeopleHub pricing login.</div>
+  <input type="text" id="gUser" placeholder="Username" autocomplete="username">
+  <input type="password" id="gPass" placeholder="Password" autocomplete="current-password">
+  <div class="err" id="gErr"></div><button class="primary" id="gGo">Log in</button>
+</div></div>
+
+<div class="wrap">
+  <div class="top"><h1>Proposals</h1><div class="sp"></div><a href="proposal.html" style="display:inline"><button class="primary">+ New proposal</button></a></div>
+  <div class="stats" id="stats"></div>
+  <div class="follow" id="follow" hidden></div>
+  <div class="chips2" id="chips"></div>
+  <div class="card">
+    <div class="toolbar"><input type="search" id="q" placeholder="Search by customer or reference"></div>
+    <div class="table-wrap"><table id="tbl"><thead><tr><th>Reference</th><th>Customer</th><th>Status</th><th>Interest</th><th>Views</th><th class="n" style="text-align:right">Monthly</th><th class="n" style="text-align:right">Due at signing</th><th>Owner</th><th>Updated</th></tr></thead><tbody id="rows"></tbody></table></div>
+    <div class="empty" id="empty" hidden>No proposals match.</div>
+  </div>
+</div>
+
+<script src="shell.js"></script>
+<script src="app.js"></script>
+<script>
+(function(){
+  var $ = PH.$, esc = PH.esc, money = PH.money;
+  var all = [], filter = 'all';
+  var FLOW = ['all', 'draft', 'sent', 'viewed', 'negotiating', 'accepted', 'lost'];
+  function ago(d){ var s = (Date.now() - new Date(d)) / 1000; if (s < 90) return 'just now'; if (s < 3600) return Math.round(s / 60) + ' min ago'; if (s < 86400) return Math.round(s / 3600) + ' h ago'; return Math.round(s / 86400) + ' d ago'; }
+  function stats(){
+    var live = all.filter(function(p){ return p.status !== 'superseded'; });
+    var open = live.filter(function(p){ return ['sent','viewed','negotiating'].indexOf(p.status) > -1; });
+    var won = live.filter(function(p){ return p.status === 'accepted'; }), lost = live.filter(function(p){ return p.status === 'lost'; });
+    var sum = function(a){ return a.reduce(function(t, p){ return t + (parseFloat(p.monthly) || 0); }, 0); };
+    var decided = won.length + lost.length;
+    $('stats').innerHTML =
+      '<div class="stat"><small>Open pipeline</small><b>' + money(sum(open)) + '</b><span>per month · ' + open.length + ' proposals out with clients</span></div>' +
+      '<div class="stat"><small>Won</small><b>' + money(sum(won)) + '</b><span>per month · ' + won.length + ' accepted</span></div>' +
+      '<div class="stat"><small>Win rate</small><b>' + (decided ? Math.round(won.length / decided * 100) + '%' : '—') + '</b><span>' + (decided ? won.length + ' won of ' + decided + ' decided' : 'No decided proposals yet') + '</span></div>' +
+      '<div class="stat"><small>Drafts</small><b>' + live.filter(function(p){ return p.status === 'draft'; }).length + '</b><span>not yet sent</span></div>';
+    $('chips').innerHTML = FLOW.map(function(f){
+      var n = f === 'all' ? live.length : all.filter(function(p){ return p.status === f; }).length;
+      return '<button class="chip' + (filter === f ? ' on' : '') + '" data-f="' + f + '">' + (f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)) + '<b>' + n + '</b></button>';
+    }).join('');
+  }
+  var insights = {};
+  function interestCell(p){ var x = insights[p.id]; return x && x.interest && x.interest.score !== undefined && ['draft','superseded'].indexOf(p.status) < 0 ? '<span class="int ' + esc(x.interest.label) + '" title="' + esc((x.interest.reasons || []).map(function(r){ return r.text; }).join('; ')) + '">' + esc(x.interest.label) + (x.interest.score != null ? ' ' + x.interest.score : '') + '</span>' : ''; }
+  function viewsCell(p){ var x = insights[p.id]; if (!x || ['draft','superseded'].indexOf(p.status) > -1) return ''; return x.views ? x.views + (x.views === 1 ? ' person' : ' people') + ' · ' + x.visits + ' visits<br>' + ago(x.lastView) : 'not opened'; }
+  function followUp(){
+    var hot = all.filter(function(p){ var x = insights[p.id]; return x && x.interest && x.interest.label === 'Hot' && ['sent','viewed','negotiating'].indexOf(p.status) > -1; })
+      .sort(function(a, b){ return insights[b.id].interest.score - insights[a.id].interest.score; }).slice(0, 5);
+    $('follow').hidden = !hot.length;
+    if (!hot.length) return;
+    $('follow').innerHTML = '<h2>Follow up now</h2><small>These clients are showing the most interest.</small>' + hot.map(function(p){
+      var x = insights[p.id]; return '<div class="it" data-id="' + p.id + '"><b>' + esc(p.customer_name) + '</b><small>' + esc(p.ref_no) + ' · ' + esc(x.interest.reasons.slice(0, 2).map(function(r){ return r.text; }).join(' · ')) + '</small></div>';
+    }).join('');
+  }
+  $('follow').addEventListener('click', function(e){ var it = e.target.closest('[data-id]'); if (it) location.href = 'proposal.html?open=' + it.dataset.id; });
+  function draw(){
+    var q = $('q').value.trim().toLowerCase();
+    var rows = all.filter(function(p){
+      if (filter === 'all' ? p.status === 'superseded' : p.status !== filter) return false;
+      return !q || (p.customer_name || '').toLowerCase().indexOf(q) > -1 || p.ref_no.toLowerCase().indexOf(q) > -1;
+    });
+    $('empty').hidden = rows.length > 0;
+    $('rows').innerHTML = rows.map(function(p){
+      return '<tr class="row-link" data-id="' + p.id + '"><td><b>' + esc(p.ref_no) + '</b>' + (p.version > 1 ? '<span class="ver">v' + p.version + '</span>' : '') + '</td><td>' + esc(p.customer_name) + '</td><td><span class="st ' + esc(p.status) + '">' + (p.incomplete ? 'incomplete ' : '') + '' + esc(p.status) + '</span>' + (p.status === 'lost' && p.lost_reason ? '<div class="hint">' + esc(p.lost_reason) + '</div>' : '') + '</td><td>' + interestCell(p) + '</td><td class="hint">' + viewsCell(p) + '</td><td class="n">' + (p.monthly ? money(p.monthly) : '') + '</td><td class="n">' + (p.due_at_signing ? money(p.due_at_signing) : '') + '</td><td class="hint">' + esc(p.created_by_name || '') + (p.partner_name ? ' · ' + esc(p.partner_name) : '') + '</td><td class="hint">' + ago(p.status_changed_at || p.updated_at) + '</td></tr>';
+    }).join('');
+  }
+  $('chips').addEventListener('click', function(e){ var b = e.target.closest('[data-f]'); if (!b) return; filter = b.dataset.f; stats(); draw(); });
+  $('q').addEventListener('input', draw);
+  $('rows').addEventListener('click', function(e){ var tr = e.target.closest('[data-id]'); if (tr) location.href = 'proposal.html?open=' + tr.dataset.id; });
+  function refresh(){ return Promise.all([PH.api('GET', '/api/proposals'), PH.api('GET', '/api/proposals-insights')]).then(function(rs){ all = rs[0].json || []; insights = rs[1].json || {}; stats(); followUp(); draw(); }); }
+  PH.boot(function(){ refresh(); setInterval(function(){ if (!document.hidden) refresh(); }, 20000); });
+})();
+</script>
+</body>
+</html>

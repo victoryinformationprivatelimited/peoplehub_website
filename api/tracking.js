@@ -18,6 +18,7 @@ const SECTIONS = ['cover', 'summary', 'scope', 'custom', 'invest', 'terms'];
 const BOT_RE = /bot|crawl|spider|slurp|preview|scan|fetch|monitor|headless|python|curl|wget|java\/|go-http|okhttp|libwww|axios|node-fetch|safelinks|proofpoint|mimecast|barracuda|symantec|trend ?micro|forcepoint|skyhigh|zscaler|urlscan|googleimageproxy|facebookexternalhit|whatsapp\/|slack|telegram|discord|linkedinbot|outlook-?meta|ms ?office|microsoft office/i;
 
 const sms = require('./sms');
+const delivery = require('./delivery');
 const whatsapp = require('./whatsapp');
 const push = require('./push');
 const escH = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -107,14 +108,21 @@ staff.get('/proposals/:id/analytics', ANY, async (req, res) => {
             array_remove(array_agg(DISTINCT v.section) FILTER (WHERE v.type = 'section'), NULL) AS sections
        FROM proposal_views v JOIN proposal_links l ON l.id = v.link_id
       WHERE v.proposal_id = $1 AND NOT v.is_bot AND NOT v.internal GROUP BY lower(l.recipient)`, [p.id]);
-  const { rows: mails } = await db.query(`SELECT lower(to_email) AS who, max(created_at) AS sent_at, bool_or(ok) AS ok FROM email_log WHERE proposal_id = $1 GROUP BY lower(to_email)`, [p.id]);
-  const byWho = new Map();
-  mails.forEach((m) => byWho.set(m.who, { who: m.who, sentAt: m.sent_at, delivered: m.ok, visits: 0, seconds: 0, pdfs: 0, ctas: 0, first_view: null, last_view: null, sections: [] }));
+  // what the mail service saw: delivered, bounced, email opened, link clicked
+  const { rows: logs } = await db.query(`SELECT to_email, subject, ok, created_at FROM email_log WHERE proposal_id = $1 ORDER BY created_at`, [p.id]);
+  const withDelivery = await delivery.attach(logs);
+  const byWho = new Map(), mailEvents = [];
+  withDelivery.forEach((m) => {
+    const k = String(m.to_email).toLowerCase(), prev = byWho.get(k) || { who: k, sentAt: null, delivered: null, delivery: null, delivered_at: null, mail_opened_at: null, mail_clicked_at: null, visits: 0, seconds: 0, pdfs: 0, ctas: 0, first_view: null, last_view: null, sections: [] };
+    const early = (a, b) => (a && b ? (new Date(a) < new Date(b) ? a : b) : a || b);
+    byWho.set(k, { ...prev, sentAt: m.created_at, delivered: prev.delivered === true || m.ok, delivery: m.delivery === 'bounced' || prev.delivery === 'bounced' ? 'bounced' : (m.delivery !== 'unknown' ? m.delivery : prev.delivery), delivered_at: early(prev.delivered_at, m.delivered_at), mail_opened_at: early(prev.mail_opened_at, m.mail_opened_at), mail_clicked_at: early(prev.mail_clicked_at, m.mail_clicked_at) });
+    (m.events || []).filter((e) => ['opened', 'clicked', 'bounced', 'complaint'].includes(e.type)).forEach((e) => mailEvents.push({ type: 'mail_' + e.type, section: null, device: null, note: null, created_at: e.at, recipient: k }));
+  });
   per.forEach((x) => { const k = x.who || null; byWho.set(k, { ...(byWho.get(k) || { who: k, sentAt: null, delivered: null }), ...x, who: k, sections: x.sections || [] }); });
   const people = [...byWho.values()].filter((x) => x.who || x.visits || x.pdfs).sort((a, b) => (b.last_view ? +new Date(b.last_view) : 0) - (a.last_view ? +new Date(a.last_view) : 0) || String(a.who).localeCompare(String(b.who)));
   res.json({
     stats, sentAt, link: link[0] ? { url: `${BASE()}/p/${link[0].token}`, expiresAt: link[0].expires_at } : null,
-    scannerOpensIgnored: filtered[0].n, internalOpens: internalOpens[0].n, recent, people, interest: interest({ status: p.status, sentAt, stats }),
+    scannerOpensIgnored: filtered[0].n, internalOpens: internalOpens[0].n, recent: [...recent, ...mailEvents].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 25), people, emailOpens: people.filter((x) => x.mail_opened_at).length, interest: interest({ status: p.status, sentAt, stats }),
   });
 });
 

@@ -41,6 +41,7 @@ app.use((err, req, res, next) => {
 });
 
 // The client-facing proposal page: one fixed HTML shell, the private token is read by the page itself
+app.get('/favicon.ico', (req, res) => res.status(204).end());
 app.get('/p/:token', (req, res) => {
   res.set({ 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow', 'Referrer-Policy': 'no-referrer' });
   res.sendFile(path.join(__dirname, '..', 'tool', 'view.html'));

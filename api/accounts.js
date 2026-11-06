@@ -40,6 +40,8 @@ r.get('/me/profile', ANY, async (req, res) => {
   const al = (await db.query('SELECT alert_email, alert_sms, alert_whatsapp, alert_push, ntfy_topic FROM app_users WHERE id = $1', [u.id])).rows[0] || {};
   res.json({ id: u.id, username: u.username, role: u.role, displayName: u.display_name || '', email: u.email || '', phone: u.phone || '',
     alertEmail: al.alert_email !== false, alertSms: !!al.alert_sms, alertWhatsapp: !!al.alert_whatsapp, alertPush: !!al.alert_push, ntfyTopic: al.ntfy_topic || '', ntfyServer: require('./push').server(),
+    replyTo: partner && partner.email ? partner.email : (u.email || ''),
+    linksPointToLocalhost: /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:|\/|$)/i.test(process.env.APP_BASE_URL || 'http://localhost:4400'),
     smsAvailable: require('./sms').configured(), whatsappAvailable: require('./whatsapp').configured(), partner });
 });
 

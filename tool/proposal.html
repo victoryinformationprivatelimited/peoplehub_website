@@ -567,7 +567,7 @@
       doc: curDoc()
     });
     $('sentBtn').hidden = !(proposal && proposal.status === 'draft');
-    renderPipeline();
+    if (!(proposal && proposal.printMode)) renderPipeline();
   }
 
   // ---------------- save / pdf / status ----------------

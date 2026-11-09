@@ -68,12 +68,12 @@ window.PHDoc = (function () {
     var cover = '<div data-sec="cover" class="pg cover"><div><div class="eyebrow">Business proposal</div><h1>PeopleHub HRIS</h1><p>A connected platform for managing, engaging and empowering your workforce.</p></div>' +
       '<div><div class="who"><div><small>Prepared for</small><b>' + esc(customer.name) + '</b>' + (c ? '<br>' + esc(c.name) + (c.title ? ', ' + esc(c.title) : '') + (c.email ? '<br>' + esc(c.email) : '') : '') + '</div>' +
       '<div><small>Prepared by</small><b>' + esc(VI.name) + '</b><br>' + esc(VI.email) + ' · ' + esc(VI.phone) + (ctx.presentedBy ? '<br>Presented by ' + esc(ctx.presentedBy) : '') + (ctx.logo && /^data:image\/(png|jpeg);base64,[A-Za-z0-9+\/=]+$/.test(ctx.logo) ? '<br><img class="plogo" alt="" src="' + ctx.logo + '">' : '') + '</div></div>' +
-      '<div class="meta" style="margin-top:18px"><span>Reference: ' + esc(ctx.ref) + '</span><span>Date: ' + esc(date) + '</span><span>Valid for ' + ctx.validity + ' days</span></div></div></div>';
+      '<div class="meta" style="margin-top:18px"><span>Reference: ' + esc(ctx.ref) + '</span><span>Date: ' + esc(date) + '</span><span>Valid for ' + ctx.validity + ' days</span>' + (q.band ? '<span>Employee band: ' + esc(q.band.label) + '</span>' : '') + '</div></div></div>';
 
     // ---------------- generated sections ----------------
     function execSummary(){
       var impl = q.implementation;
-      return '<p>' + esc(VI.name) + ' is pleased to propose PeopleHub HRIS for ' + esc(customer.name) + '. This proposal covers ' + i.employees.toLocaleString() + ' employees' +
+      return '<p>' + esc(VI.name) + ' is pleased to propose PeopleHub HRIS for ' + esc(customer.name) + '. This proposal covers ' + i.employees.toLocaleString() + ' employees' + (q.band ? ' (pricing band ' + esc(q.band.label) + ')' : '') +
         (customer.sites ? ' across ' + esc(customer.sites) : '') + (customer.current_system ? ', replacing ' + esc(customer.current_system) : '') + '.</p>' +
         '<p>The solution includes the complete Core HR foundation' + (chosen.length ? ', plus ' + chosen.map(function(x){ return esc(x.name); }).join(', ') : '') + (i.portalUsers > 0 ? ', and the Employee Self-Service portal for ' + i.portalUsers.toLocaleString() + ' users on the web, Android and iOS' : '') + '.</p>' +
         '<div class="big"><div><small>' + (perp ? 'Licence fee' : 'Monthly subscription') + '</small><b>' + money(perp ? q.billing.licence : q.monthlyRecurring) + '</b></div>' +
@@ -154,7 +154,7 @@ window.PHDoc = (function () {
       var onceRows = q.lines.filter(function(l){ return l.oneTime; }).map(function(l){ return '<tr><td>' + esc(l.label) + '<small>' + esc(detail(l)) + '</small></td><td class="amt">' + money(l.amount) + '</td></tr>'; }).join('');
       if (q.discountOnce > 0) onceRows += '<tr><td>Discount</td><td class="amt">−' + money(q.discountOnce) + '</td></tr>';
       var impl = q.implementation;
-      return '<p>All prices are in US dollars and are all-inclusive: there are no other taxes or hidden costs.</p>' +
+      return '<p>All prices are in US dollars and are all-inclusive: there are no other taxes or hidden costs.' + (q.band ? ' Pricing is for the <b>' + esc(q.band.label) + '</b> employee band.' : '') + '</p>' +
         '<table class="doc"><tr><th>Recurring</th><th class="amt">Per month</th></tr>' + rows + '</table>' +
         (onceRows ? '<table class="doc"><tr><th>One-time</th><th class="amt">Amount</th></tr>' + onceRows + '<tr class="sub"><td>One-time total</td><td class="amt">' + money(q.oneTime) + '</td></tr></table>' : '') +
         (q.implementationAgreed && q.implementationMode !== 'guideline' ? '<p><b>Implementation</b> will be quoted separately once the requirements and scope are confirmed.' + (q.implementationScope ? ' ' + esc(q.implementationScope) : '') + '</p>' : '') +

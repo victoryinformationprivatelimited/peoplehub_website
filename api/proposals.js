@@ -121,7 +121,7 @@ async function build(req, proposalId) {
   if (p.error) return { status: 400, error: p.error, extra: { maxDiscountPct: p.cap } };
   if (p.quote.custom && !incomplete) return { status: 400, error: 'This company size needs a custom quote — please contact Victory Information.' };
   const client = {
-    name: cust.name, industry: cust.industry, address: cust.address, sites: cust.sites, current_system: cust.current_system, website: cust.website,
+    name: cust.name, logo: cust.logo || null, industry: cust.industry, address: cust.address, sites: cust.sites, current_system: cust.current_system, website: cust.website,
     contact: contact ? { name: contact.name, title: contact.title, email: contact.email, phone: contact.phone, role: contact.role } : null,
   };
   return { ok: true, incomplete, priceListId: pl.id, cust, contact, input: p.input, quote: p.quote, client, partnerId: req.user.role === 'partner' ? req.user.partner_id : cust.partner_id };

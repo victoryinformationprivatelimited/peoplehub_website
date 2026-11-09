@@ -65,10 +65,22 @@ window.PHDoc = (function () {
     var hasCustom = (i.customisations && i.customisations.length) || i.integrationHours > 0;
 
     // ---------------- cover ----------------
-    var cover = '<div data-sec="cover" class="pg cover"><div><div class="eyebrow">Business proposal</div><h1>PeopleHub HRIS</h1><p>A connected platform for managing, engaging and empowering your workforce.</p></div>' +
-      '<div><div class="who"><div><small>Prepared for</small><b>' + esc(customer.name) + '</b>' + (c ? '<br>' + esc(c.name) + (c.title ? ', ' + esc(c.title) : '') + (c.email ? '<br>' + esc(c.email) : '') : '') + '</div>' +
-      '<div><small>Prepared by</small><b>' + esc(VI.name) + '</b><br>' + esc(VI.email) + ' · ' + esc(VI.phone) + (ctx.presentedBy ? '<br>Presented by ' + esc(ctx.presentedBy) : '') + (ctx.logo && /^data:image\/(png|jpeg);base64,[A-Za-z0-9+\/=]+$/.test(ctx.logo) ? '<br><img class="plogo" alt="" src="' + ctx.logo + '">' : '') + '</div></div>' +
-      '<div class="meta" style="margin-top:18px"><span>Reference: ' + esc(ctx.ref) + '</span><span>Date: ' + esc(date) + '</span><span>Valid for ' + ctx.validity + ' days</span>' + (q.band ? '<span>Employee band: ' + esc(q.band.label) + '</span>' : '') + '</div></div></div>';
+    var okLogo = function(x){ return x && /^data:image\/(png|jpeg);base64,[A-Za-z0-9+\/=]+$/.test(x); };
+    var badge = function(src, label){ return '<span class="lg"><img alt="' + esc(label || '') + '" src="' + src + '"></span>'; };
+    // a ring of people, echoing the PeopleHub mark, drawn faintly behind the title
+    var ring = (function(){
+      var cols = ['#73ee8c', '#52c492', '#18b491', '#cdff6b'], out = '';
+      for (var k = 0; k < 11; k++) { var ang = k / 11 * Math.PI * 2 - Math.PI / 2, cx = 300 + Math.cos(ang) * 215, cy = 300 + Math.sin(ang) * 215; out += '<circle cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="34" fill="' + cols[k % 4] + '"/>'; }
+      return '<svg class="cv-ring" viewBox="0 0 600 600" aria-hidden="true"><circle cx="300" cy="300" r="150" fill="none" stroke="#52c492" stroke-width="30" stroke-dasharray="70 12"/>' + out + '</svg>';
+    })();
+    var cover = '<div data-sec="cover" class="pg cover">' + ring +
+      '<div class="cv-top"><img class="cv-ph" alt="PeopleHub" src="/assets/peoplehub-logo-white.png"><div class="eyebrow">Business proposal</div></div>' +
+      '<div class="cv-mid"><h1>PeopleHub HRIS</h1><div class="cv-rule"></div><p>A connected platform for managing, engaging and empowering your workforce.</p></div>' +
+      '<div class="cv-bot"><div class="who">' +
+        '<div class="card-for"><small>Prepared for</small>' + (okLogo(customer.logo) ? '<div class="lgs">' + badge(customer.logo, customer.name) + '</div>' : '') + '<b>' + esc(customer.name) + '</b>' + (c ? '<span>' + esc(c.name) + (c.title ? ', ' + esc(c.title) : '') + (c.email ? '<br>' + esc(c.email) : '') + '</span>' : '') + '</div>' +
+        '<div class="card-by"><small>Prepared by</small><div class="lgs">' + badge('/assets/victory-logo.png', VI.name) + (okLogo(ctx.logo) ? badge(ctx.logo, ctx.presentedBy || '') : '') + '</div><b>' + esc(VI.name) + '</b>' + (ctx.presentedBy ? '<span>Presented by ' + esc(ctx.presentedBy) + '</span>' : '') + '<span>' + esc(VI.email) + ' · ' + esc(VI.phone) + '</span></div>' +
+      '</div>' +
+      '<div class="meta"><span>Reference <b>' + esc(ctx.ref) + '</b></span><span>Date <b>' + esc(date) + '</b></span><span>Valid for <b>' + ctx.validity + ' days</b></span>' + (q.band ? '<span>Employee band <b>' + esc(q.band.label) + '</b></span>' : '') + '</div></div></div>';
 
     // ---------------- generated sections ----------------
     function execSummary(){

@@ -104,6 +104,23 @@ r.get('/customers/:id', ANY, async (req, res) => {
   res.json({ ...cust, contacts: rows, proposals: props.rows, lead: lead.rows[0] || null, partner_name: pn.rows[0] ? pn.rows[0].company_name : null });
 });
 
+// The customer's logo for the proposal cover: a small PNG or JPEG, kept as a data URL like the partner logo
+const LOGO_RE = /^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/;
+r.put('/customers/:id/logo', ANY, async (req, res) => {
+  const cust = await loadCustomer(req.user, req.params.id);
+  if (!cust) return res.status(404).json({ error: 'Customer not found' });
+  const d = req.body.dataUrl;
+  if (typeof d !== 'string' || d.length > 200000 || !LOGO_RE.test(d)) return bad(res, 'Use a PNG or JPEG image under about 150 KB');
+  await db.query('UPDATE customers SET logo = $1 WHERE id = $2', [d, cust.id]);
+  res.json({ ok: true });
+});
+r.delete('/customers/:id/logo', ANY, async (req, res) => {
+  const cust = await loadCustomer(req.user, req.params.id);
+  if (!cust) return res.status(404).json({ error: 'Customer not found' });
+  await db.query('UPDATE customers SET logo = NULL WHERE id = $1', [cust.id]);
+  res.json({ ok: true });
+});
+
 r.put('/customers/:id', ANY, async (req, res) => {
   const c = readCustomer(req.body); if (c.error) return bad(res, c.error);
   if (!(await loadCustomer(req.user, req.params.id))) return res.status(404).json({ error: 'Customer not found' });

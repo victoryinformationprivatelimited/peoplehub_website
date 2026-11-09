@@ -182,7 +182,7 @@ pub.get('/public/proposal/:token', async (req, res) => {
     acceptance: acc[0] ? { name: acc[0].signer_name, title: acc[0].signer_title, at: acc[0].accepted_at, ref: acc[0].proposal_hash.slice(0, 12) } : null,
     presentedBy: pres[0] ? pres[0].company_name : '', logo: pres[0] ? pres[0].logo : null,
     quote: row.totals, input: row.selections, doc: row.doc,
-    customer: { name: row.client.name, sites: row.client.sites, current_system: row.client.current_system }, contact,
+    customer: { name: row.client.name, logo: row.client.logo || null, sites: row.client.sites, current_system: row.client.current_system }, contact,
     catalog: { coreFeatures: d.core || [], items: (d.items || []).filter((i) => chosen.has(i.id)).map((i) => ({ id: i.id, name: i.name, group: i.group, includes: i.includes || '' })) },
   });
 });

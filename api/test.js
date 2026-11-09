@@ -766,6 +766,19 @@ function session() {
       check('SMS by key: builds the request and reads the success code', sentOk);
       check('SMS by key: explains an empty wallet, a bad key and an unknown code', /wallet/i.test(poor.error) && /key is not valid/i.test(bad.error) && /2999/.test(odd.error));
     }
+    {
+      // the customer's logo for the proposal cover
+      const cust = (await admin('GET', '/api/customers')).json[0];
+      if (cust) {
+        const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+        const put = await admin('PUT', '/api/customers/' + cust.id + '/logo', { dataUrl: png });
+        const got = (await admin('GET', '/api/customers/' + cust.id)).json;
+        check('a customer logo can be saved and is returned with the customer', put.status === 200 && got.logo === png);
+        check('a customer logo must be a small PNG or JPEG', (await admin('PUT', '/api/customers/' + cust.id + '/logo', { dataUrl: 'data:image/svg+xml;base64,PHN2Zz4=' })).status === 400 && (await admin('PUT', '/api/customers/' + cust.id + '/logo', { dataUrl: 'data:image/png;base64,' + 'A'.repeat(210000) })).status === 400);
+        const del = await admin('DELETE', '/api/customers/' + cust.id + '/logo');
+        check('a customer logo can be removed', del.status === 200 && (await admin('GET', '/api/customers/' + cust.id)).json.logo === null);
+      }
+    }
     const pv = await T('GET', '/api/price-list');
     check('a partner sees the implementation guideline at full value', pv.json.data.implementation.base[2] === 800);
 

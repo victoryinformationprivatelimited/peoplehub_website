@@ -558,7 +558,7 @@
     $('refLabel').textContent = proposal ? proposal.ref_no + ' · ' + proposal.status : '';
     $('docWrap').innerHTML = PHDoc.html({
       quote: quote, input: st.input, validity: st.validity,
-      customer: { name: customer.name, sites: customer.sites, current_system: customer.current_system },
+      customer: { name: customer.name, logo: customer.logo || null, sites: customer.sites, current_system: customer.current_system },
       contact: c ? { name: c.name, title: c.title, email: c.email } : null,
       ref: proposal ? proposal.ref_no : '(assigned when saved)', createdAt: proposal && proposal.created_at ? proposal.created_at : Date.now(),
       catalog: catalog, presentedBy: me.partner ? me.partner.company : (proposal && proposal.partner_name) || '',

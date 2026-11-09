@@ -1,11 +1,15 @@
 // SMS alerts through Dialog eSMS (https://e-sms.dialog.lk). Credentials live only in api/.env.
-//   ESMS_USERNAME, ESMS_PASSWORD   the eSMS login
+// Two ways to sign in; the key is used when both are set:
+//   ESMS_KEY                       the "URL Message Key" from the eSMS portal (sends by GET, no login needed)
+//   ESMS_USERNAME, ESMS_PASSWORD   the eSMS API login (sends by POST with a token)
 //   ESMS_MASK                      optional sender name (max 11 characters); the account default is used if blank
 //   ESMS_PAYMENT                   0 = wallet (default), 4 = package
 const LOGIN_URL = 'https://esms.dialog.lk/api/v2/user/login';
 const SEND_URL = 'https://e-sms.dialog.lk/api/v2/sms';
+const KEY_URL = 'https://e-sms.dialog.lk/api/v1/message-via-url/create/url-campaign';
 
-const configured = () => !!process.env.ESMS_USERNAME && !!process.env.ESMS_PASSWORD;
+const usesKey = () => !!process.env.ESMS_KEY;
+const configured = () => usesKey() || (!!process.env.ESMS_USERNAME && !!process.env.ESMS_PASSWORD);
 
 let token = null, tokenUntil = 0;
 
@@ -15,6 +19,25 @@ function normalize(n) {
   if (d.length === 11 && d.startsWith('94')) d = d.slice(2);
   else if (d.length === 10 && d.startsWith('0')) d = d.slice(1);
   return /^7\d{8}$/.test(d) ? d : null;
+}
+
+// What eSMS means by the number it answers with when sending by key
+const KEY_ERRORS = {
+  2001: 'eSMS could not create the campaign', 2002: 'eSMS says the request was bad', 2003: 'No phone number was given', 2004: 'The message was empty',
+  2005: 'The phone number format is not valid', 2006: 'This eSMS account is not allowed to send by key (ask Dialog to enable it)', 2007: 'The eSMS key is not valid',
+  2008: 'Not enough money in the eSMS wallet, or no messages left in the package', 2009: 'No valid numbers were left (the number may have blocked this sender name)',
+  2010: 'This eSMS account is not allowed to use packages', 2011: 'eSMS reported a transaction error', 2012: 'This eSMS account has no access to that sender name (mask)', 2020: 'Too many requests to eSMS; try again in a moment',
+};
+
+async function sendByKey(mobiles, message) {
+  const q = new URLSearchParams({ esmsqk: process.env.ESMS_KEY, list: mobiles.join(','), message });
+  if (process.env.ESMS_MASK) q.set('source_address', String(process.env.ESMS_MASK).slice(0, 11));
+  if (process.env.ESMS_PAYMENT === '4') q.set('paymentType', '4');
+  const res = await fetch(KEY_URL + '?' + q.toString(), { method: 'GET', signal: AbortSignal.timeout(15000) });
+  const text = (await res.text()).trim();
+  const code = parseInt(text, 10);
+  if (res.ok && code === 1) return { ok: true };
+  return { ok: false, error: KEY_ERRORS[code] ? KEY_ERRORS[code] + ' (code ' + code + ')' : 'eSMS refused the message (' + res.status + (Number.isFinite(code) ? ', code ' + code : '') + ')' };
 }
 
 async function login() {
@@ -41,6 +64,7 @@ async function send(numbers, text) {
   const message = String(text || '').trim().slice(0, 300);
   if (!message) return { ok: false, error: 'Empty message' };
   try {
+    if (usesKey()) return await sendByKey(mobiles, message);
     if (!token || Date.now() > tokenUntil) await login();
     let { res, j } = await post(message, mobiles);
     if (res.status === 401 || (j.status === 'failed' && /token|auth/i.test(String(j.comment || '')))) { await login(); ({ res, j } = await post(message, mobiles)); }
@@ -49,4 +73,4 @@ async function send(numbers, text) {
   } catch (e) { return { ok: false, error: e.message || 'Could not reach eSMS' }; }
 }
 
-module.exports = { send, configured, normalize };
+module.exports = { send, configured, normalize, usesKey, KEY_ERRORS };

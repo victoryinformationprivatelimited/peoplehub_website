@@ -750,6 +750,22 @@ function session() {
       const pf2 = await admin('PUT', '/api/me/profile', { ...keep, alertPush: me0.alertPush });
       check('turning push off keeps the topic for later', pf2.status === 200 && (await admin('GET', '/api/me/profile')).json.ntfyTopic === me.ntfyTopic);
     }
+    {
+      // SMS by key: the request, the success code and the error codes (stubbed; nothing is sent)
+      const sms = require('./sms'), realFetch = global.fetch, before = { k: process.env.ESMS_KEY, m: process.env.ESMS_MASK, u: process.env.ESMS_USERNAME };
+      process.env.ESMS_KEY = 'test-key'; process.env.ESMS_MASK = 'PeopleHub';
+      let seen = null, answer = '1';
+      global.fetch = async (url) => { seen = new URL(url); return { ok: true, status: 200, text: async () => answer }; };
+      const ok = await sms.send(['0767444999', '+94 76 744 4999'], 'Hello there');
+      const sentOk = ok.ok === true && seen.searchParams.get('esmsqk') === 'test-key' && seen.searchParams.get('list') === '767444999' && seen.searchParams.get('message') === 'Hello there' && seen.searchParams.get('source_address') === 'PeopleHub';
+      answer = '2008'; const poor = await sms.send(['0767444999'], 'x');
+      answer = '2007'; const bad = await sms.send(['0767444999'], 'x');
+      answer = '2999'; const odd = await sms.send(['0767444999'], 'x');
+      global.fetch = realFetch;
+      for (const [k, key] of [['k', 'ESMS_KEY'], ['m', 'ESMS_MASK'], ['u', 'ESMS_USERNAME']]) { if (before[k] === undefined) delete process.env[key]; else process.env[key] = before[k]; }
+      check('SMS by key: builds the request and reads the success code', sentOk);
+      check('SMS by key: explains an empty wallet, a bad key and an unknown code', /wallet/i.test(poor.error) && /key is not valid/i.test(bad.error) && /2999/.test(odd.error));
+    }
     const pv = await T('GET', '/api/price-list');
     check('a partner sees the implementation guideline at full value', pv.json.data.implementation.base[2] === 800);
 

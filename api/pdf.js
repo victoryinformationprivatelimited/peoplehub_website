@@ -29,7 +29,7 @@ async function renderNow(userId, proposalId) {
     await page.goto(`http://127.0.0.1:${PORT}/tool/proposal.html?print=${encodeURIComponent(proposalId)}`, { waitUntil: 'networkidle0', timeout: 30000 });
     await page.waitForSelector('body[data-print-ready="1"] #docWrap .pg', { timeout: 20000 });
     await page.emulateMediaType('print');
-    const pdf = await page.pdf({ format: 'A4', printBackground: true, preferCSSPageSize: false, margin: { top: '0', right: '0', bottom: '0', left: '0' } });
+    const pdf = await page.pdf({ format: 'A4', printBackground: true, preferCSSPageSize: true, margin: { top: '0', right: '0', bottom: '0', left: '0' } });
     return Buffer.from(pdf);
   } finally {
     await browser.close().catch(() => {});

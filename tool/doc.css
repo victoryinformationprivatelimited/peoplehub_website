@@ -56,3 +56,32 @@ table.doc tr.sub td { color: #0b3d2e; font-weight: 700; background: #f1f8f4; }
 .glance .gcol:first-child ul { columns: 2; column-gap: 28px; }
 table.mini td:first-child { padding-right: 10px; }
 .pg figure { margin: 12px 0; text-align: center; break-inside: avoid; } .pg figure img { max-width: 100%; max-height: 280px; border-radius: 6px; } .pg figcaption { font-size: 11.5px; color: #5a6b64; margin-top: 4px; } .pg a { color: #0b6b4f; }
+
+/* ---------- print and PDF: continuous flow, no half-empty pages ---------- */
+@page { size: A4; margin: 16mm 0 16mm; }
+@page :first { margin: 0; }
+@media print {
+  .pg { padding: 3mm 16mm 4mm; border: none; break-after: auto; page-break-after: auto; }
+  .pg.cover { box-sizing: border-box; height: 297mm; min-height: 297mm; padding: 22mm 16mm; break-after: page; page-break-after: always; }
+  .pg[data-sec="contents"] { padding-top: 16mm; break-after: page; page-break-after: always; }
+  .pg h2, .pg h3, .pg h4, .pg h5 { break-after: avoid; page-break-after: avoid; }
+  .pg h2 { margin-top: 8mm; }
+  .pg[data-sec="contents"] h2 { margin-top: 0; }
+  .pg p, .pg li { orphans: 3; widows: 3; }
+  .pg li, .pg tr, .pg figure, .mod, .gcol, .big, .pillar > h3, .pillar > .ptag, .toc > * { break-inside: avoid; page-break-inside: avoid; }
+  table.doc, table.mini { break-inside: auto; }
+}
+@media print {
+  html, body { background: #fff !important; }
+  .partlabel { break-after: avoid; page-break-after: avoid; }
+  .docfoot { break-before: avoid; page-break-before: avoid; }
+}
+@media print {
+  /* the dark theme also paints the page margins; print is always on white paper */
+  :root, :root[data-theme="dark"], :root[data-theme="light"] { color-scheme: light !important; }
+}
+@media print {
+  /* short closing sections stay in one piece, so the signature block never lands alone on a page */
+  .pg[data-sec="accept"], .pg[data-sec="contact"], .pg[data-sec="next"], .pg[data-sec="exec"] { break-inside: avoid; page-break-inside: avoid; }
+  .sig { break-inside: avoid; page-break-inside: avoid; }
+}

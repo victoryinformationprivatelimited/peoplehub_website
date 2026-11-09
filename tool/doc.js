@@ -22,7 +22,7 @@ window.PHDoc = (function () {
     leisure: 'Employee community space: events, announcements, polls and recognition.'
   };
   var TERM_LABEL = { monthly: 'Monthly', annual: 'Annual prepay (12 months)', '2yr': '2-year prepay (24 months)', '3yr': '3-year prepay (36 months)' };
-  var VI = { name: 'Victory Information (Pvt) Ltd', address: 'No 150, Templers Road, Mount Lavinia, Sri Lanka', email: 'sales@victoryinformation.lk', phone: '+94 117 110 600' };
+  var VI = { name: 'Victory Information (Pvt) Ltd', address: 'No 150, Templers Road, Mount Lavinia, Sri Lanka', email: 'sales@victoryinformation.lk', phone: '+94 76 744 4999' };
   var ALL = ['summary', 'standard', 'comprehensive'];
   // used only for proposals saved before the text library existed
   var FALLBACK = [

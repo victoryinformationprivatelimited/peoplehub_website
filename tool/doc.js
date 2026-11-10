@@ -110,7 +110,10 @@ window.PHDoc = (function () {
     }
 
     // every module, in its pillar; the ones in this proposal stand out
+    function priceOf(id){ var l = (q.modulePrices || []).filter(function(x){ return x.id === id; })[0]; return l || null; }
+    var seenItem = {};
     function capabilities(){
+      seenItem = {};
       var pillars = doc && doc.pillars; if (!pillars) return '';
       var full = style === 'comprehensive', inCount = 0, total = 0;
       function state(m){
@@ -128,9 +131,16 @@ window.PHDoc = (function () {
       }
       var body = pillars.map(function(p, pi){
         var cards = p.modules.map(function(m){
+          var mp = m.itemId ? priceOf(m.itemId) : null, priceLine = '';
+          if (m.itemId && mp) {
+            if (!seenItem[m.itemId]) { seenItem[m.itemId] = true; priceLine = '<div class="mp"><b>' + (mp.price == null ? 'Price on request' : money(mp.price) + ' / month') + '</b><span>' + esc(mp.name) + '</span></div>'; }
+            else priceLine = '<div class="mp mp2">Included in the ' + esc(mp.name) + ' price</div>';
+          } else if (m.included === 'wdms') priceLine = '<div class="mp"><b>' + money((q.rates && q.rates.wdmsPerDevice != null) ? q.rates.wdmsPerDevice : 3) + ' / device / month</b><span>WDMS configuration</span></div>';
+          else if (m.included === 'portal' && q.rates && q.rates.portalPerUser != null) priceLine = '<div class="mp"><b>' + rate(q.rates.portalPerUser) + ' / user / month</b><span>Employee Self-Service</span></div>';
+          else if (m.included === 'core') priceLine = '<div class="mp mp2">Included in the platform fee</div>';
           var s = state(m); total++; if (s.st !== 'avail') inCount++;
           var caps = s.st === 'avail' ? m.capabilities.slice(0, full ? 2 : 0) : (full ? m.capabilities : m.capabilities.slice(0, s.st === 'in' ? 3 : 0));
-          return '<div class="mod ' + s.st + '"><div class="mh"><b>' + esc(m.name) + '</b>' + (s.label ? '<span class="chip ' + s.st + '">' + esc(s.label) + '</span>' : '') + '</div><p class="ms">' + esc(m.summary) + '</p>' +
+          return '<div class="mod ' + s.st + '"><div class="mh"><b>' + esc(m.name) + '</b>' + (s.label ? '<span class="chip ' + s.st + '">' + esc(s.label) + '</span>' : '') + '</div><p class="ms">' + esc(m.summary) + '</p>' + priceLine +
             (caps.length ? '<ul>' + caps.map(function(x){ return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '') +
             (m.note && (s.st !== 'avail' || full) ? '<div class="mi">Please note: ' + esc(m.note) + '</div>' : '') +
             (full && s.st !== 'avail' && m.impact && m.impact.length ? '<div class="mi">' + esc(m.impact[0]) + '</div>' : '') + '</div>';
@@ -145,6 +155,17 @@ window.PHDoc = (function () {
       if (l.key === 'implementation' && !l.parts && q.implementation && q.implementation.scope) return 'Set-up, configuration, data migration, training and go-live. ' + q.implementation.scope;
       if (l.key === 'implementation' && l.parts) return 'Set-up, configuration, data migration, training and go-live. Base fee ' + money(l.parts.base) + (l.parts.modules.length ? ', plus ' + l.parts.modules.map(function(m){ return m.name + ' ' + money(m.amount); }).join(', ') : '') + '.';
       return l.detail;
+    }
+    // every module and add-on, so the client knows what else costs
+    function priceList(){
+      var mps = q.modulePrices || []; if (!mps.length) return '';
+      var rows = '<tr><td>Core HR<small>Platform fee, always included</small></td><td class="amt">' + (q.corePrice == null ? 'On request' : money(q.corePrice)) + '</td><td>Included</td></tr>';
+      [['module', 'Modules'], ['addon', 'Add-ons']].forEach(function(g){
+        var list = mps.filter(function(x){ return x.group === g[0]; }); if (!list.length) return;
+        rows += '<tr class="sub"><td colspan="3">' + g[1] + '</td></tr>' + list.map(function(x){ return '<tr><td>' + esc(x.name) + '</td><td class="amt">' + (x.price == null ? 'On request' : money(x.price)) + '</td><td>' + (x.included ? '<b>In this proposal</b>' : 'Optional') + '</td></tr>'; }).join('');
+      });
+      return '<h4>Module and add-on prices</h4><p class="hint2">Monthly price of every module for the <b>' + esc(q.band.label) + '</b> employee band' + (q.discountPct > 0 ? ', after the ' + q.discountPct + '% discount in this proposal' : '') + '. Any of them can be added at any time.</p>' +
+        '<table class="doc"><tr><th>Module or add-on</th><th class="amt">Per month</th><th>Status</th></tr>' + rows + '</table>';
     }
     function glance(){
       var r = q.rates; if (!r) return '';
@@ -175,6 +196,7 @@ window.PHDoc = (function () {
           '<tr><td>Annual maintenance and support<small>' + q.billing.maintenancePct + '% of the licence fee, payable yearly</small></td><td class="amt">' + money(q.billing.maintenanceAnnual) + '</td></tr>' +
           '<tr><td>Usage (storage and notifications)<small>billed monthly</small></td><td class="amt">' + money(q.billing.usageMonthly) + '</td></tr></table>'
           : '<p><b>Billing:</b> ' + esc(TERM_LABEL[q.billing.term]) + '.' + (q.billing.months > 1 ? ' ' + money(q.billing.prepayLump) + ' is invoiced up front for ' + q.billing.months + ' months.' : ' The subscription is invoiced monthly.') + '</p>') +
+        priceList() +
         glance();
     }
 

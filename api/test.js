@@ -779,6 +779,20 @@ function session() {
         check('a customer logo can be removed', del.status === 200 && (await admin('GET', '/api/customers/' + cust.id)).json.logo === null);
       }
     }
+    {
+      // the price of every module for this company size, shown to the client
+      const base = (await admin('POST', '/api/quote', { ...qIn, discounts: [] })).json.quote;
+      const disc = (await admin('POST', '/api/quote', { ...qIn, discounts: [{ label: 'x', pct: 10 }] })).json.quote;
+      const mpBase = base.modulePrices || [], mpDisc = disc.modulePrices || [];
+      const t0 = mpBase.find((m) => m.id === 'time'), t1 = mpDisc.find((m) => m.id === 'time');
+      check('module prices list every module and add-on, with the core price', mpBase.length >= 10 && base.corePrice > 0 && mpBase.every((m) => ['module', 'addon'].includes(m.group)));
+      check('module prices carry the proposal discount and mark what is included', t0 && t1 && Math.abs(t1.price - t0.price * 0.9) < 0.006 && t0.included === qIn.items.includes('time'));
+      const proposalId = (await admin('GET', '/api/proposals')).json.find((p) => !p.incomplete);
+      if (proposalId) {
+        const saved = (await admin('GET', '/api/proposals/' + proposalId.id)).json;
+        check('an older proposal gets module prices filled in without changing its saved figures', Array.isArray(saved.totals.modulePrices) && saved.totals.modulePrices.length >= 10);
+      }
+    }
     const pv = await T('GET', '/api/price-list');
     check('a partner sees the implementation guideline at full value', pv.json.data.implementation.base[2] === 800);
 

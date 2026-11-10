@@ -19,6 +19,7 @@ const BOT_RE = /bot|crawl|spider|slurp|preview|scan|fetch|monitor|headless|pytho
 
 const sms = require('./sms');
 const delivery = require('./delivery');
+const prices = require('./prices');
 const whatsapp = require('./whatsapp');
 const push = require('./push');
 const escH = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -181,7 +182,7 @@ pub.get('/public/proposal/:token', async (req, res) => {
     replaced: !!newer, closed: row.status === 'lost', status: row.status,
     acceptance: acc[0] ? { name: acc[0].signer_name, title: acc[0].signer_title, at: acc[0].accepted_at, ref: acc[0].proposal_hash.slice(0, 12) } : null,
     presentedBy: pres[0] ? pres[0].company_name : '', logo: pres[0] ? pres[0].logo : null,
-    quote: row.totals, input: row.selections, doc: row.doc,
+    quote: await prices.withModulePrices(row.totals, row.selections, row.price_list_id), input: row.selections, doc: row.doc,
     customer: { name: row.client.name, logo: row.client.logo || null, sites: row.client.sites, current_system: row.client.current_system }, contact,
     catalog: { coreFeatures: d.core || [], items: (d.items || []).filter((i) => chosen.has(i.id)).map((i) => ({ id: i.id, name: i.name, group: i.group, includes: i.includes || '' })) },
   });

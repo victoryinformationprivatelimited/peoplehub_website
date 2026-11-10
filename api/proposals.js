@@ -5,6 +5,7 @@ const customers = require('./customers');
 const mail = require('./email');
 const kit = require('./emailkit');
 const delivery = require('./delivery');
+const prices = require('./prices');
 const pdf = require('./pdf');
 const tracking = require('./tracking');
 const crm = require('./crm');
@@ -94,7 +95,7 @@ r.get('/proposals/:id', ANY, async (req, res) => {
   if (!rows[0]) return res.status(404).json({ error: 'Proposal not found' });
   const acc = await db.query('SELECT signer_name, signer_title, proposal_hash, accepted_at FROM proposal_acceptances WHERE proposal_id = $1', [rows[0].id]);
   const logo = rows[0].partner_id ? (await db.query('SELECT logo FROM partners WHERE id = $1', [rows[0].partner_id])).rows[0] : null;
-  res.json({ ...rows[0], acceptance: acc.rows[0] || null, partner_logo: logo ? logo.logo : null });
+  res.json({ ...rows[0], totals: await prices.withModulePrices(rows[0].totals, rows[0].selections, rows[0].price_list_id), acceptance: acc.rows[0] || null, partner_logo: logo ? logo.logo : null });
 });
 
 // Shared by create and update: validate the customer and contact, price the quote, and build what gets stored.

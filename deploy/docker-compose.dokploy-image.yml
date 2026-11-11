@@ -26,6 +26,7 @@ services:
     # The ready-made image from GitHub's container registry. Set APP_IMAGE in the Environment tab to run a specific version.
     # The app creates and updates its own database tables when it starts.
     image: ${APP_IMAGE:-ghcr.io/victoryinformationprivatelimited/peoplehub-studio:latest}
+    pull_policy: always
     restart: unless-stopped
     depends_on:
       studio-db:

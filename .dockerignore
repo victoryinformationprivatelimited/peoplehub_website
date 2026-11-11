@@ -7,3 +7,11 @@ serve.js
 tool/pricing-config.json
 docker-compose.yml
 Dockerfile
+
+api/.demo-credentials
+api/.admin-initial-password
+api/.env.*
+!api/.env.example
+**/*.log
+deploy
+docs

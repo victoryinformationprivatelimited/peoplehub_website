@@ -1,8 +1,10 @@
 # PeopleHub Proposal Studio on a real server: app + PostgreSQL + Caddy (automatic HTTPS).
 # Nothing is published except ports 80 and 443. The database and the app are reachable only through Caddy.
 #
-# From the Website folder on the server:
-#   docker compose -f deploy/docker-compose.prod.yml --env-file api/.env up -d --build
+# From the Website folder on the server (the app image is pulled, not built):
+#   docker login ghcr.io
+#   docker compose -f deploy/docker-compose.prod.yml --env-file api/.env pull
+#   docker compose -f deploy/docker-compose.prod.yml --env-file api/.env up -d
 # See deploy/DEPLOY.md for the full checklist.
 name: peoplehub-studio
 
@@ -25,9 +27,9 @@ services:
       retries: 20
 
   api:
-    build:
-      context: ..
-      dockerfile: Dockerfile
+    # The ready-made app image from GitHub's container registry (private; the server needs `docker login ghcr.io`).
+    # Pin a version by setting APP_IMAGE in api/.env, for example ghcr.io/victoryinformationprivatelimited/peoplehub-studio:7c77f78
+    image: ${APP_IMAGE:-ghcr.io/victoryinformationprivatelimited/peoplehub-studio:latest}
     restart: unless-stopped
     depends_on:
       db:

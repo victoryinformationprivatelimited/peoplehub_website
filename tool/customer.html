@@ -44,6 +44,9 @@
   <div class="cols">
     <div>
       <div class="card"><h2>About</h2><div class="kv" id="kv" style="margin-top:10px"></div><div id="notes" class="hint" style="margin-top:12px;white-space:pre-wrap"></div></div>
+      <div class="card"><h2>Logo</h2><div class="hint" style="margin-bottom:8px">Shown on the cover of this customer's proposals. A PNG or JPEG; it is resized for you.</div>
+        <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><div id="logoBox" style="background:#fff;border-radius:10px;padding:8px 12px;min-width:90px;min-height:46px;display:flex;align-items:center;justify-content:center;color:#8a9a93;font-size:12px"></div>
+        <div><input type="file" id="logoFile" accept="image/png,image/jpeg" style="max-width:240px"> <button id="logoDel" hidden>Remove</button><div class="msg" id="logoMsg" style="margin:6px 0 0"></div></div></div></div>
       <div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><h2>People</h2><button id="addContact">+ Add contact</button></div><div id="contacts" style="margin-top:6px"></div></div>
       <div class="card"><h2>Proposals</h2><div id="props" style="margin-top:6px"></div></div>
     </div>
@@ -95,7 +98,31 @@
       return '<div class="li"><div class="m"><a href="proposal.html?open=' + p.id + '"><b>' + esc(p.ref_no) + '</b></a><small>' + new Date(p.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) + (p.monthly ? ' · ' + money(p.monthly) + ' a month' : '') + '</small></div><span class="st ' + esc(p.status) + '">' + esc(p.status) + '</span></div>';
     }).join('') : '<div class="hint" style="padding:10px 0">No proposals yet. Press <b>+ New proposal</b> to price this customer.</div>';
   }
-  function load(){ return PH.api('GET', '/api/customers/' + id).then(function(r){ if (r.status !== 200) { $('hName').textContent = 'Customer not found'; return; } c = r.json; render(); }); }
+  function showLogo(d){
+    $('logoBox').innerHTML = d ? '<img alt="" style="max-height:46px;max-width:180px" src="' + d + '">' : 'No logo';
+    $('logoDel').hidden = !d;
+  }
+  // shrink the picture in the browser so it stays well under the size limit, keeping any transparency
+  $('logoFile').addEventListener('change', function(){
+    var f = this.files[0]; this.value = ''; if (!f) return;
+    var fr = new FileReader();
+    fr.onload = function(){
+      var img = new Image();
+      img.onload = function(){
+        var s = Math.min(1, 520 / img.width, 260 / img.height), cv = document.createElement('canvas');
+        cv.width = Math.max(1, Math.round(img.width * s)); cv.height = Math.max(1, Math.round(img.height * s));
+        cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+        var data = cv.toDataURL('image/png');
+        if (data.length > 190000) { var c2 = cv.getContext('2d'); var bg = document.createElement('canvas'); bg.width = cv.width; bg.height = cv.height; var bx = bg.getContext('2d'); bx.fillStyle = '#fff'; bx.fillRect(0, 0, bg.width, bg.height); bx.drawImage(cv, 0, 0); data = bg.toDataURL('image/jpeg', 0.85); }
+        PH.api('PUT', '/api/customers/' + id + '/logo', { dataUrl: data }).then(function(r){ if (r.status === 200) { PH.say($('logoMsg'), 'Logo saved', true); c.logo = data; showLogo(data); } else PH.say($('logoMsg'), r.json.error || 'Could not save the logo', false); });
+      };
+      img.onerror = function(){ PH.say($('logoMsg'), 'That file is not a picture we can read', false); };
+      img.src = fr.result;
+    };
+    fr.readAsDataURL(f);
+  });
+  $('logoDel').addEventListener('click', function(){ PH.api('DELETE', '/api/customers/' + id + '/logo').then(function(){ c.logo = null; showLogo(null); PH.say($('logoMsg'), 'Logo removed', true); }); });
+  function load(){ return PH.api('GET', '/api/customers/' + id).then(function(r){ if (r.status !== 200) { $('hName').textContent = 'Customer not found'; return; } c = r.json; render(); showLogo(c.logo); }); }
   function timeline(){
     PH.api('GET', '/api/customers/' + id + '/timeline').then(function(r){
       var rows = r.json || [];

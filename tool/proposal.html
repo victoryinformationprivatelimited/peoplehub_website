@@ -67,7 +67,7 @@
     body { background:var(--surface); }
     #reviewArea > *:not(#docWrap), .top, .steps, .summary, #gate, #listCard, #navBtns, #s1, #s2, #s3 { display:none !important; }
     .wrap { max-width:none; padding:0; } .layout { display:block; }
-    #docWrap { border:none; border-radius:0; } .pg { padding:18mm 16mm; border:none; }
+    #docWrap { border:none; border-radius:0; }
     .cover { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
     table.doc th, .big, table.doc tr.sub td { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   }
@@ -264,6 +264,8 @@
               <div class="field"><label>Extra attachments (up to 5 files, 5 MB each)</label>
                 <input type="file" id="mFile" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.csv,.txt">
                 <div id="mFiles" class="hint" style="margin-top:6px"></div></div>
+              <div class="note" id="mLocal" hidden style="margin:0 0 8px"><b>The online link in this email will not work for your client.</b> It points to this computer (localhost), so only you can open it, and spam filters dislike such links. Set <code>APP_BASE_URL</code> to the public address of the tool before emailing real clients.</div>
+              <div class="hint" id="mReply" style="margin-bottom:8px"></div>
               <div style="margin-bottom:8px"><button type="button" id="mPreview">Preview email</button></div>
               <iframe id="mPrev" sandbox="" hidden style="width:100%;height:420px;border:1px solid var(--border);border-radius:10px;background:#fff;margin-bottom:10px"></iframe>
               <div class="hint" style="margin-bottom:8px">Each address gets its own email. Write the message in your own words, choose what to include, and use Preview to see exactly what the client gets. Sending a draft marks it as sent; sending again later is a resend and does not create a new version.</div>
@@ -556,7 +558,7 @@
     $('refLabel').textContent = proposal ? proposal.ref_no + ' · ' + proposal.status : '';
     $('docWrap').innerHTML = PHDoc.html({
       quote: quote, input: st.input, validity: st.validity,
-      customer: { name: customer.name, sites: customer.sites, current_system: customer.current_system },
+      customer: { name: customer.name, logo: customer.logo || null, sites: customer.sites, current_system: customer.current_system },
       contact: c ? { name: c.name, title: c.title, email: c.email } : null,
       ref: proposal ? proposal.ref_no : '(assigned when saved)', createdAt: proposal && proposal.created_at ? proposal.created_at : Date.now(),
       catalog: catalog, presentedBy: me.partner ? me.partner.company : (proposal && proposal.partner_name) || '',
@@ -565,7 +567,7 @@
       doc: curDoc()
     });
     $('sentBtn').hidden = !(proposal && proposal.status === 'draft');
-    renderPipeline();
+    if (!(proposal && proposal.printMode)) renderPipeline();
   }
 
   // ---------------- save / pdf / status ----------------
@@ -666,10 +668,11 @@
   function peopleHtml(a){
     var ps = a.people || [], ev = a.recent || [];
     if (!ps.length && !ev.length) return '';
-    var lbl = { engaged: 'opened the proposal', pdf: 'downloaded the PDF', cta: 'asked to talk' };
-    var t = '<h4 style="margin:14px 0 6px">By person</h4><div class="table-wrap"><table><thead><tr><th>Person</th><th>Status</th><th>Reading</th><th>PDF downloads</th><th>Last seen</th></tr></thead><tbody>' + ps.map(function(x){
-      var st = x.visits || x.pdfs ? 'Opened' + (x.visits > 1 ? ' (' + x.visits + ' visits)' : '') : (x.delivered === false ? 'Delivery failed' : 'Not opened yet');
-      return '<tr><td>' + (x.who ? esc(x.who) : '<i>Shared link</i>') + '</td><td>' + st + '</td><td>' + (x.visits || x.pdfs ? secs(x.seconds) : '') + '</td><td>' + (x.pdfs || 0) + '</td><td>' + (x.last_view ? esc(new Date(x.last_view).toLocaleString()) : (x.sentAt ? '<span class="hint">sent ' + esc(new Date(x.sentAt).toLocaleString()) + '</span>' : '')) + '</td></tr>';
+    var lbl = { engaged: 'opened the proposal', pdf: 'downloaded the PDF', cta: 'asked to talk', mail_opened: 'opened the email', mail_clicked: 'clicked the link in the email', mail_bounced: 'had the email bounce', mail_complaint: 'marked the email as spam' };
+    var t = '<h4 style="margin:14px 0 6px">By person</h4><div class="table-wrap"><table><thead><tr><th>Person</th><th>Email</th><th>Online proposal</th><th>Reading</th><th>PDF downloads</th><th>Last seen</th></tr></thead><tbody>' + ps.map(function(x){
+      var st = x.visits || x.pdfs ? 'Opened' + (x.visits > 1 ? ' (' + x.visits + ' visits)' : '') : 'Not opened yet';
+      var em = !x.who ? '' : x.delivered === false ? 'Not sent' : x.delivery === 'bounced' ? '<b style="color:var(--bad-fg)">Bounced</b>' : x.mail_opened_at ? 'Opened ' + esc(new Date(x.mail_opened_at).toLocaleString()) : x.delivery === 'delivered' ? 'Delivered, not opened' : x.delivery === 'sent' ? 'Sent, waiting' : 'Sent';
+      return '<tr><td>' + (x.who ? esc(x.who) : '<i>Shared link</i>') + '</td><td>' + em + '</td><td>' + st + '</td><td>' + (x.visits || x.pdfs ? secs(x.seconds) : '') + '</td><td>' + (x.pdfs || 0) + '</td><td>' + (x.last_view ? esc(new Date(x.last_view).toLocaleString()) : (x.sentAt ? '<span class="hint">sent ' + esc(new Date(x.sentAt).toLocaleString()) + '</span>' : '')) + '</td></tr>';
     }).join('') + '</tbody></table></div>';
     if (ev.length) t += '<h4 style="margin:14px 0 6px">Latest events</h4><ul style="margin:0;padding-left:18px">' + ev.slice(0, 10).map(function(e){ return '<li><span class="hint">' + esc(new Date(e.created_at).toLocaleString()) + '</span> ' + (e.recipient ? '<b>' + esc(e.recipient) + '</b>' : 'Someone on the shared link') + ' ' + (lbl[e.type] || e.type) + (e.device ? ' <span class="hint">(' + esc(e.device) + ')</span>' : '') + '</li>'; }).join('') + '</ul>';
     return t;
@@ -684,12 +687,12 @@
       var secLabel = { cover: 'Cover', summary: 'Summary', scope: 'Scope', custom: 'Customisation', invest: 'Pricing', terms: 'Terms' };
       var html = '<div class="act"><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><b>Client activity</b><span class="int ' + esc(it.label) + '">' + esc(it.label) + (it.score != null ? ' · ' + it.score : '') + '</span>' +
         '<span class="hint" style="margin:0">' + (s.visitors ? 'Last viewed ' + new Date(s.last_view).toLocaleString() : 'Not opened yet') + '</span></div>' +
-        '<div class="kp"><div><small>People</small><b>' + (s.visitors || 0) + '</b></div><div><small>Visits</small><b>' + (s.visits || 0) + '</b></div><div><small>Time reading</small><b>' + secs(s.seconds) + '</b></div><div><small>PDF downloads</small><b>' + (s.pdfs || 0) + '</b></div><div><small>Asked to talk</small><b>' + (s.ctas || 0) + '</b></div></div>' +
+        '<div class="kp"><div><small>People</small><b>' + (s.visitors || 0) + '</b></div><div><small>Visits</small><b>' + (s.visits || 0) + '</b></div><div><small>Time reading</small><b>' + secs(s.seconds) + '</b></div><div><small>Emails opened</small><b>' + (a.emailOpens || 0) + '</b></div><div><small>PDF downloads</small><b>' + (s.pdfs || 0) + '</b></div><div><small>Asked to talk</small><b>' + (s.ctas || 0) + '</b></div></div>' +
         peopleHtml(a) +
         (s.sections && s.sections.length ? '<div class="hint">Read: ' + s.sections.map(function(x){ return esc(secLabel[x] || x); }).join(', ') + '</div>' : '') +
         ((it.reasons || []).length ? '<ul>' + it.reasons.map(function(x){ return '<li>' + esc(x.text) + (x.points ? ' <b class="' + (x.points < 0 ? 'neg' : '') + '">' + (x.points > 0 ? '+' : '') + x.points + '</b>' : '') + '</li>'; }).join('') + '</ul>' : '') +
         (a.scannerOpensIgnored ? '<div class="hint" style="margin-top:6px">' + a.scannerOpensIgnored + ' automatic opens by email scanners were ignored.</div>' : '') +
-        (a.internalOpens ? '<div class="note" style="margin:10px 0 0"><b>' + a.internalOpens + ' visit' + (a.internalOpens === 1 ? '' : 's') + ' from you or a colleague were not counted</b>, because you were signed in to this tool. To test the tracking, open the link in a private window, or sign out first. A real client is never signed in, so their visits count.</div>' : '') +
+        (a.internalOpens ? '<div class="note" style="margin:10px 0 0"><b>' + a.internalOpens + ' visit' + (a.internalOpens === 1 ? '' : 's') + ' from you or a colleague ' + (a.internalOpens === 1 ? 'was' : 'were') + ' not counted</b>, because you were signed in to this tool. To test the tracking, open the link in a private window, or sign out first. A real client is never signed in, so their visits count.</div>' : '') +
         (!s.visitors && !a.internalOpens ? '<div class="hint" style="margin-top:6px">Only the online link is tracked. Opening the email or the PDF attachment cannot be seen, so the client has to click <b>View your proposal online</b>.</div>' : '') +
         (link && link.url ? '<div class="lnk"><input type="text" readonly id="lnkUrl" value="' + esc(link.url) + '"><button id="lnkCopy">Copy link</button></div><div class="hint">Anyone with this link can read the proposal until ' + new Date(link.expiresAt).toLocaleDateString() + '.</div>' : '') + '</div>';
       box.innerHTML = html;
@@ -731,8 +734,16 @@
     api('GET', '/api/proposals/' + proposal.id + '/emails').then(function(r){
       var rows = r.json || [];
       $('mHistory').innerHTML = rows.length ? '<b>Delivery log</b>' + rows.map(function(e){
-        var chip = !e.ok ? '<span class="stp" style="background:var(--bad-bg);color:var(--bad-fg)">Delivery failed</span>' : e.opened ? '<span class="stp" style="background:var(--ok-bg);color:var(--ok-fg)">Received and opened</span>' : '<span class="stp">Accepted by mail service</span>';
-        return '<div style="margin-top:6px">' + chip + ' ' + esc(e.to_email) + (e.role === 'cc' ? ' (extra)' : '') + (e.resend ? ' · resend' : '') + ' <span class="hint">' + esc(new Date(e.created_at).toLocaleString()) + (e.ok ? '' : ' - ' + esc(e.error || '')) + (e.opened_at ? ' · opened ' + esc(new Date(e.opened_at).toLocaleString()) : '') + '</span></div>';
+        var bad = 'background:var(--bad-bg);color:var(--bad-fg)', good = 'background:var(--ok-bg);color:var(--ok-fg)';
+        var chip = !e.ok ? '<span class="stp" style="' + bad + '">Not sent</span>'
+          : e.delivery === 'bounced' ? '<span class="stp" style="' + bad + '">Bounced: not delivered</span>'
+          : e.delivery === 'complaint' ? '<span class="stp" style="' + bad + '">Marked as spam by the recipient</span>'
+          : e.opened ? '<span class="stp" style="' + good + '">Link opened</span>'
+          : e.mail_opened_at ? '<span class="stp" style="' + good + '">Email opened</span>'
+          : e.delivery === 'delivered' ? '<span class="stp" style="' + good + '">Delivered to the mailbox</span>'
+          : e.delivery === 'sent' ? '<span class="stp">Sent, waiting for delivery</span>'
+          : '<span class="stp">Accepted by mail service</span>';
+        return '<div style="margin-top:6px">' + chip + ' ' + esc(e.to_email) + (e.role === 'cc' ? ' (extra)' : '') + (e.resend ? ' · resend' : '') + ' <span class="hint">' + esc(new Date(e.created_at).toLocaleString()) + (e.ok ? '' : ' - ' + esc(e.error || '')) + (e.delivered_at && !e.opened_at ? ' · delivered ' + esc(new Date(e.delivered_at).toLocaleString()) : '') + (e.mail_opened_at ? ' · email opened ' + esc(new Date(e.mail_opened_at).toLocaleString()) : '') + (e.opened_at ? ' · link opened ' + esc(new Date(e.opened_at).toLocaleString()) : '') + '</span></div>';
       }).join('') : '';
     });
   }
@@ -787,7 +798,16 @@
       if (r.status === 200) { $('mPrev').hidden = false; $('mPrev').srcdoc = r.json.html; } else say($('mMsg'), r.json.error || 'Could not build the preview', false);
     });
   });
-  $('emailBtn').addEventListener('click', function(){
+  $('mOptLink').addEventListener('change', function(){ if (!$('mLocal').dataset.on) { $('mLocal').hidden = true; return; } $('mLocal').hidden = !this.checked; });
+  function showReplyTo(){
+    api('GET', '/api/me/profile').then(function(r){
+      $('mLocal').dataset.on = r.json && r.json.linksPointToLocalhost ? '1' : '';
+      $('mLocal').hidden = !(r.json && r.json.linksPointToLocalhost && $('mOptLink').checked);
+      var a = r.json && r.json.replyTo;
+      $('mReply').innerHTML = a ? 'Replies from the client go to <b>' + esc(a) + '</b>.' : '<b style="color:var(--warn-fg)">No reply address.</b> Add your email in <a href="profile.html">My profile</a>, so the client\'s replies reach you.';
+    });
+  }
+  $('emailBtn').addEventListener('click', function(){ showReplyTo();
     if (!proposal) { say($('saveMsg'), 'Save the proposal first', false); return; }
     var c = customer && customer.contacts.filter(function(k){ return k.id === st.contact_id; })[0];
     $('mTo').value = (c && c.email) || '';

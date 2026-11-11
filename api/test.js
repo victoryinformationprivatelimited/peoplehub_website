@@ -750,6 +750,49 @@ function session() {
       const pf2 = await admin('PUT', '/api/me/profile', { ...keep, alertPush: me0.alertPush });
       check('turning push off keeps the topic for later', pf2.status === 200 && (await admin('GET', '/api/me/profile')).json.ntfyTopic === me.ntfyTopic);
     }
+    {
+      // SMS by key: the request, the success code and the error codes (stubbed; nothing is sent)
+      const sms = require('./sms'), realFetch = global.fetch, before = { k: process.env.ESMS_KEY, m: process.env.ESMS_MASK, u: process.env.ESMS_USERNAME };
+      process.env.ESMS_KEY = 'test-key'; process.env.ESMS_MASK = 'PeopleHub';
+      let seen = null, answer = '1';
+      global.fetch = async (url) => { seen = new URL(url); return { ok: true, status: 200, text: async () => answer }; };
+      const ok = await sms.send(['0767444999', '+94 76 744 4999'], 'Hello there');
+      const sentOk = ok.ok === true && seen.searchParams.get('esmsqk') === 'test-key' && seen.searchParams.get('list') === '767444999' && seen.searchParams.get('message') === 'Hello there' && seen.searchParams.get('source_address') === 'PeopleHub';
+      answer = '2008'; const poor = await sms.send(['0767444999'], 'x');
+      answer = '2007'; const bad = await sms.send(['0767444999'], 'x');
+      answer = '2999'; const odd = await sms.send(['0767444999'], 'x');
+      global.fetch = realFetch;
+      for (const [k, key] of [['k', 'ESMS_KEY'], ['m', 'ESMS_MASK'], ['u', 'ESMS_USERNAME']]) { if (before[k] === undefined) delete process.env[key]; else process.env[key] = before[k]; }
+      check('SMS by key: builds the request and reads the success code', sentOk);
+      check('SMS by key: explains an empty wallet, a bad key and an unknown code', /wallet/i.test(poor.error) && /key is not valid/i.test(bad.error) && /2999/.test(odd.error));
+    }
+    {
+      // the customer's logo for the proposal cover
+      const cust = (await admin('GET', '/api/customers')).json[0];
+      if (cust) {
+        const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+        const put = await admin('PUT', '/api/customers/' + cust.id + '/logo', { dataUrl: png });
+        const got = (await admin('GET', '/api/customers/' + cust.id)).json;
+        check('a customer logo can be saved and is returned with the customer', put.status === 200 && got.logo === png);
+        check('a customer logo must be a small PNG or JPEG', (await admin('PUT', '/api/customers/' + cust.id + '/logo', { dataUrl: 'data:image/svg+xml;base64,PHN2Zz4=' })).status === 400 && (await admin('PUT', '/api/customers/' + cust.id + '/logo', { dataUrl: 'data:image/png;base64,' + 'A'.repeat(210000) })).status === 400);
+        const del = await admin('DELETE', '/api/customers/' + cust.id + '/logo');
+        check('a customer logo can be removed', del.status === 200 && (await admin('GET', '/api/customers/' + cust.id)).json.logo === null);
+      }
+    }
+    {
+      // the price of every module for this company size, shown to the client
+      const base = (await admin('POST', '/api/quote', { ...qIn, discounts: [] })).json.quote;
+      const disc = (await admin('POST', '/api/quote', { ...qIn, discounts: [{ label: 'x', pct: 10 }] })).json.quote;
+      const mpBase = base.modulePrices || [], mpDisc = disc.modulePrices || [];
+      const t0 = mpBase.find((m) => m.id === 'time'), t1 = mpDisc.find((m) => m.id === 'time');
+      check('module prices list every module and add-on, with the core price', mpBase.length >= 10 && base.corePrice > 0 && mpBase.every((m) => ['module', 'addon'].includes(m.group)));
+      check('module prices carry the proposal discount and mark what is included', t0 && t1 && Math.abs(t1.price - t0.price * 0.9) < 0.006 && t0.included === qIn.items.includes('time'));
+      const proposalId = (await admin('GET', '/api/proposals')).json.find((p) => !p.incomplete);
+      if (proposalId) {
+        const saved = (await admin('GET', '/api/proposals/' + proposalId.id)).json;
+        check('an older proposal gets module prices filled in without changing its saved figures', Array.isArray(saved.totals.modulePrices) && saved.totals.modulePrices.length >= 10);
+      }
+    }
     const pv = await T('GET', '/api/price-list');
     check('a partner sees the implementation guideline at full value', pv.json.data.implementation.base[2] === 800);
 

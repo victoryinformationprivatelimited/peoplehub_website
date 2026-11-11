@@ -486,3 +486,6 @@ ALTER TABLE app_users ADD COLUMN IF NOT EXISTS alert_whatsapp BOOLEAN NOT NULL D
 -- ---- Phone push alerts (ntfy) ----
 ALTER TABLE app_users ADD COLUMN IF NOT EXISTS alert_push BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE app_users ADD COLUMN IF NOT EXISTS ntfy_topic VARCHAR(40);
+
+-- ---- The customer's logo on the proposal cover (a small image, stored as a data URL) ----
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS logo TEXT;

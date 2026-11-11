@@ -267,7 +267,7 @@ Retention is configurable and finalised with you. Typical settings are payroll d
 ## Victory Information (Pvt) Ltd
 No 150, Templers Road, Mount Lavinia, Sri Lanka
 Email: info@victoryinformation.lk and sales@victoryinformation.lk
-Phone: +94 117 110 600 and +94 76 744 4999
+Phone: +94 76 744 4999
 Web: victoryinformation.lk and peoplehub.biz` },
 ];
 

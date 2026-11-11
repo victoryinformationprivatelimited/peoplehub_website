@@ -56,3 +56,59 @@ table.doc tr.sub td { color: #0b3d2e; font-weight: 700; background: #f1f8f4; }
 .glance .gcol:first-child ul { columns: 2; column-gap: 28px; }
 table.mini td:first-child { padding-right: 10px; }
 .pg figure { margin: 12px 0; text-align: center; break-inside: avoid; } .pg figure img { max-width: 100%; max-height: 280px; border-radius: 6px; } .pg figcaption { font-size: 11.5px; color: #5a6b64; margin-top: 4px; } .pg a { color: #0b6b4f; }
+
+/* ---------- print and PDF: continuous flow, no half-empty pages ---------- */
+@page { size: A4; margin: 16mm 0 16mm; }
+@page :first { margin: 0; }
+@media print {
+  .pg { padding: 3mm 16mm 4mm; border: none; break-after: auto; page-break-after: auto; }
+  .pg.cover { box-sizing: border-box; height: 297mm; min-height: 297mm; padding: 22mm 16mm; break-after: page; page-break-after: always; }
+  .pg[data-sec="contents"] { padding-top: 16mm; break-after: page; page-break-after: always; }
+  .pg h2, .pg h3, .pg h4, .pg h5 { break-after: avoid; page-break-after: avoid; }
+  .pg h2 { margin-top: 8mm; }
+  .pg[data-sec="contents"] h2 { margin-top: 0; }
+  .pg p, .pg li { orphans: 3; widows: 3; }
+  .pg li, .pg tr, .pg figure, .mod, .gcol, .big, .pillar > h3, .pillar > .ptag, .toc > * { break-inside: avoid; page-break-inside: avoid; }
+  table.doc, table.mini { break-inside: auto; }
+}
+@media print {
+  html, body { background: #fff !important; }
+  .partlabel { break-after: avoid; page-break-after: avoid; }
+  .docfoot { break-before: avoid; page-break-before: avoid; }
+}
+@media print {
+  /* the dark theme also paints the page margins; print is always on white paper */
+  :root, :root[data-theme="dark"], :root[data-theme="light"] { color-scheme: light !important; }
+}
+@media print {
+  /* short closing sections stay in one piece, so the signature block never lands alone on a page */
+  .pg[data-sec="accept"], .pg[data-sec="contact"], .pg[data-sec="next"], .pg[data-sec="exec"] { break-inside: avoid; page-break-inside: avoid; }
+  .sig { break-inside: avoid; page-break-inside: avoid; }
+}
+
+/* ---------- cover page ---------- */
+.pg.cover { position: relative; overflow: hidden; background: linear-gradient(155deg, #06100c 0%, #0a2118 52%, #0f3b2b 100%); color: #fff; min-height: 640px; justify-content: space-between; gap: 28px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.cover .cv-ring { position: absolute; right: -170px; top: 80px; width: 560px; height: 560px; opacity: .17; pointer-events: none; }
+.cover .cv-top, .cover .cv-mid, .cover .cv-bot { position: relative; z-index: 1; }
+.cover .cv-top { display: flex; justify-content: space-between; align-items: flex-start; }
+.cover .cv-ph { height: 150px; width: auto; display: block; }
+.cover .eyebrow { color: #73ee8c; text-transform: uppercase; letter-spacing: .22em; font-size: 12px; font-weight: 700; padding-top: 10px; }
+.cover .cv-mid { padding: 4px 0; }
+.cover h1 { font-size: 58px; line-height: 1.04; margin: 0 0 14px; letter-spacing: -.01em; }
+.cover .cv-rule { width: 84px; height: 5px; border-radius: 4px; background: linear-gradient(90deg, #cdff6b, #18b491); margin: 0 0 16px; }
+.pg.cover .cv-mid p { color: #b7d4c8; font-size: 17px; max-width: 470px; margin: 0; line-height: 1.5; }
+.cover .who { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; border: 0; padding: 0; }
+.cover .who > div { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14); border-radius: 14px; padding: 16px 18px; display: flex; flex-direction: column; gap: 4px; }
+.cover .who small { color: #73ee8c; text-transform: uppercase; letter-spacing: .14em; font-size: 10.5px; font-weight: 700; margin-bottom: 6px; display: block; }
+.cover .who b { font-size: 17px; color: #fff; font-weight: 700; }
+.cover .who span { color: #b7d4c8; font-size: 12.5px; line-height: 1.5; }
+.cover .lgs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.cover .lg { display: inline-flex; align-items: center; justify-content: center; background: #fff; border-radius: 10px; padding: 8px 12px; min-height: 44px; }
+.cover .lg img { max-height: 40px; max-width: 150px; width: auto; display: block; }
+.cover .meta { display: flex; flex-wrap: wrap; gap: 8px 26px; margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.16); color: #8fb5a5; font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; }
+.cover .meta b { color: #fff; text-transform: none; letter-spacing: 0; font-size: 12.5px; margin-left: 4px; }
+
+/* ---------- module prices ---------- */
+.mod .mp { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin: 2px 0 6px; font-size: 13px; color: #0b6b4f; }
+.mod .mp b { font-size: 14px; color: #0b6b4f; } .mod .mp span { font-size: 11.5px; color: #6b8178; }
+.mod .mp2 { font-size: 11.5px; color: #6b8178; font-weight: 600; }

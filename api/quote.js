@@ -186,8 +186,15 @@ function compute(list, input) {
     wdmsPerDevice: wdmsRate, // never discounted
   };
 
+  // What each module and add-on costs for this company size, after this proposal's discount, so the client can see the price of what is not in the proposal too
+  const kDisc = 1 - pct / 100;
+  const modulePrices = list.items.filter((i) => i.group !== 'core').map((i) => {
+    const p = itemPrice(list, i, bi);
+    return { id: i.id, name: i.name, group: i.group, included: input.items.includes(i.id), price: p === null ? null : r2(p * kDisc), listPrice: p };
+  });
+
   const out = {
-    band: { index: bi, label: band.label }, lines, implementation, rates,
+    band: { index: bi, label: band.label }, lines, implementation, rates, modulePrices, corePrice: corePrice === null ? null : corePrice,
     implementationMode: sel.mode, implementationAgreed: !implLine, implementationScope: sel.scope || '',
     implementationGuideline: guide, implementationMilestones: (im && im.milestones && im.milestones.length ? im.milestones : [{ label: 'On signing', pct: 100 }]),
     implementationLow: !!(implLine && sel.mode === 'own' && guide && guide.total > 0 && implLine.amount < guide.total * 0.5), custom, discounts: input.discounts, discountPct: pct,

@@ -22,7 +22,7 @@ window.PHDoc = (function () {
     leisure: 'Employee community space: events, announcements, polls and recognition.'
   };
   var TERM_LABEL = { monthly: 'Monthly', annual: 'Annual prepay (12 months)', '2yr': '2-year prepay (24 months)', '3yr': '3-year prepay (36 months)' };
-  var VI = { name: 'Victory Information (Pvt) Ltd', address: 'No 150, Templers Road, Mount Lavinia, Sri Lanka', email: 'sales@victoryinformation.lk', phone: '+94 117 110 600' };
+  var VI = { name: 'Victory Information (Pvt) Ltd', address: 'No 150, Templers Road, Mount Lavinia, Sri Lanka', email: 'sales@victoryinformation.lk', phone: '+94 76 744 4999' };
   var ALL = ['summary', 'standard', 'comprehensive'];
   // used only for proposals saved before the text library existed
   var FALLBACK = [
@@ -65,15 +65,27 @@ window.PHDoc = (function () {
     var hasCustom = (i.customisations && i.customisations.length) || i.integrationHours > 0;
 
     // ---------------- cover ----------------
-    var cover = '<div data-sec="cover" class="pg cover"><div><div class="eyebrow">Business proposal</div><h1>PeopleHub HRIS</h1><p>A connected platform for managing, engaging and empowering your workforce.</p></div>' +
-      '<div><div class="who"><div><small>Prepared for</small><b>' + esc(customer.name) + '</b>' + (c ? '<br>' + esc(c.name) + (c.title ? ', ' + esc(c.title) : '') + (c.email ? '<br>' + esc(c.email) : '') : '') + '</div>' +
-      '<div><small>Prepared by</small><b>' + esc(VI.name) + '</b><br>' + esc(VI.email) + ' · ' + esc(VI.phone) + (ctx.presentedBy ? '<br>Presented by ' + esc(ctx.presentedBy) : '') + (ctx.logo && /^data:image\/(png|jpeg);base64,[A-Za-z0-9+\/=]+$/.test(ctx.logo) ? '<br><img class="plogo" alt="" src="' + ctx.logo + '">' : '') + '</div></div>' +
-      '<div class="meta" style="margin-top:18px"><span>Reference: ' + esc(ctx.ref) + '</span><span>Date: ' + esc(date) + '</span><span>Valid for ' + ctx.validity + ' days</span></div></div></div>';
+    var okLogo = function(x){ return x && /^data:image\/(png|jpeg);base64,[A-Za-z0-9+\/=]+$/.test(x); };
+    var badge = function(src, label){ return '<span class="lg"><img alt="' + esc(label || '') + '" src="' + src + '"></span>'; };
+    // a ring of people, echoing the PeopleHub mark, drawn faintly behind the title
+    var ring = (function(){
+      var cols = ['#73ee8c', '#52c492', '#18b491', '#cdff6b'], out = '';
+      for (var k = 0; k < 11; k++) { var ang = k / 11 * Math.PI * 2 - Math.PI / 2, cx = 300 + Math.cos(ang) * 215, cy = 300 + Math.sin(ang) * 215; out += '<circle cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="34" fill="' + cols[k % 4] + '"/>'; }
+      return '<svg class="cv-ring" viewBox="0 0 600 600" aria-hidden="true"><circle cx="300" cy="300" r="150" fill="none" stroke="#52c492" stroke-width="30" stroke-dasharray="70 12"/>' + out + '</svg>';
+    })();
+    var cover = '<div data-sec="cover" class="pg cover">' + ring +
+      '<div class="cv-top"><img class="cv-ph" alt="PeopleHub" src="/assets/peoplehub-logo-white.png"><div class="eyebrow">Business proposal</div></div>' +
+      '<div class="cv-mid"><h1>PeopleHub HRIS</h1><div class="cv-rule"></div><p>A connected platform for managing, engaging and empowering your workforce.</p></div>' +
+      '<div class="cv-bot"><div class="who">' +
+        '<div class="card-for"><small>Prepared for</small>' + (okLogo(customer.logo) ? '<div class="lgs">' + badge(customer.logo, customer.name) + '</div>' : '') + '<b>' + esc(customer.name) + '</b>' + (c ? '<span>' + esc(c.name) + (c.title ? ', ' + esc(c.title) : '') + (c.email ? '<br>' + esc(c.email) : '') + '</span>' : '') + '</div>' +
+        '<div class="card-by"><small>Prepared by</small><div class="lgs">' + badge('/assets/victory-logo.png', VI.name) + (okLogo(ctx.logo) ? badge(ctx.logo, ctx.presentedBy || '') : '') + '</div><b>' + esc(VI.name) + '</b>' + (ctx.presentedBy ? '<span>Presented by ' + esc(ctx.presentedBy) + '</span>' : '') + '<span>' + esc(VI.email) + ' · ' + esc(VI.phone) + '</span></div>' +
+      '</div>' +
+      '<div class="meta"><span>Reference <b>' + esc(ctx.ref) + '</b></span><span>Date <b>' + esc(date) + '</b></span><span>Valid for <b>' + ctx.validity + ' days</b></span>' + (q.band ? '<span>Employee band <b>' + esc(q.band.label) + '</b></span>' : '') + '</div></div></div>';
 
     // ---------------- generated sections ----------------
     function execSummary(){
       var impl = q.implementation;
-      return '<p>' + esc(VI.name) + ' is pleased to propose PeopleHub HRIS for ' + esc(customer.name) + '. This proposal covers ' + i.employees.toLocaleString() + ' employees' +
+      return '<p>' + esc(VI.name) + ' is pleased to propose PeopleHub HRIS for ' + esc(customer.name) + '. This proposal covers ' + i.employees.toLocaleString() + ' employees' + (q.band ? ' (pricing band ' + esc(q.band.label) + ')' : '') +
         (customer.sites ? ' across ' + esc(customer.sites) : '') + (customer.current_system ? ', replacing ' + esc(customer.current_system) : '') + '.</p>' +
         '<p>The solution includes the complete Core HR foundation' + (chosen.length ? ', plus ' + chosen.map(function(x){ return esc(x.name); }).join(', ') : '') + (i.portalUsers > 0 ? ', and the Employee Self-Service portal for ' + i.portalUsers.toLocaleString() + ' users on the web, Android and iOS' : '') + '.</p>' +
         '<div class="big"><div><small>' + (perp ? 'Licence fee' : 'Monthly subscription') + '</small><b>' + money(perp ? q.billing.licence : q.monthlyRecurring) + '</b></div>' +
@@ -98,7 +110,10 @@ window.PHDoc = (function () {
     }
 
     // every module, in its pillar; the ones in this proposal stand out
+    function priceOf(id){ var l = (q.modulePrices || []).filter(function(x){ return x.id === id; })[0]; return l || null; }
+    var seenItem = {};
     function capabilities(){
+      seenItem = {};
       var pillars = doc && doc.pillars; if (!pillars) return '';
       var full = style === 'comprehensive', inCount = 0, total = 0;
       function state(m){
@@ -116,9 +131,16 @@ window.PHDoc = (function () {
       }
       var body = pillars.map(function(p, pi){
         var cards = p.modules.map(function(m){
+          var mp = m.itemId ? priceOf(m.itemId) : null, priceLine = '';
+          if (m.itemId && mp) {
+            if (!seenItem[m.itemId]) { seenItem[m.itemId] = true; priceLine = '<div class="mp"><b>' + (mp.price == null ? 'Price on request' : money(mp.price) + ' / month') + '</b><span>' + esc(mp.name) + '</span></div>'; }
+            else priceLine = '<div class="mp mp2">Included in the ' + esc(mp.name) + ' price</div>';
+          } else if (m.included === 'wdms') priceLine = '<div class="mp"><b>' + money((q.rates && q.rates.wdmsPerDevice != null) ? q.rates.wdmsPerDevice : 3) + ' / device / month</b><span>WDMS configuration</span></div>';
+          else if (m.included === 'portal' && q.rates && q.rates.portalPerUser != null) priceLine = '<div class="mp"><b>' + rate(q.rates.portalPerUser) + ' / user / month</b><span>Employee Self-Service</span></div>';
+          else if (m.included === 'core') priceLine = '<div class="mp mp2">Included in the platform fee</div>';
           var s = state(m); total++; if (s.st !== 'avail') inCount++;
           var caps = s.st === 'avail' ? m.capabilities.slice(0, full ? 2 : 0) : (full ? m.capabilities : m.capabilities.slice(0, s.st === 'in' ? 3 : 0));
-          return '<div class="mod ' + s.st + '"><div class="mh"><b>' + esc(m.name) + '</b>' + (s.label ? '<span class="chip ' + s.st + '">' + esc(s.label) + '</span>' : '') + '</div><p class="ms">' + esc(m.summary) + '</p>' +
+          return '<div class="mod ' + s.st + '"><div class="mh"><b>' + esc(m.name) + '</b>' + (s.label ? '<span class="chip ' + s.st + '">' + esc(s.label) + '</span>' : '') + '</div><p class="ms">' + esc(m.summary) + '</p>' + priceLine +
             (caps.length ? '<ul>' + caps.map(function(x){ return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '') +
             (m.note && (s.st !== 'avail' || full) ? '<div class="mi">Please note: ' + esc(m.note) + '</div>' : '') +
             (full && s.st !== 'avail' && m.impact && m.impact.length ? '<div class="mi">' + esc(m.impact[0]) + '</div>' : '') + '</div>';
@@ -133,6 +155,17 @@ window.PHDoc = (function () {
       if (l.key === 'implementation' && !l.parts && q.implementation && q.implementation.scope) return 'Set-up, configuration, data migration, training and go-live. ' + q.implementation.scope;
       if (l.key === 'implementation' && l.parts) return 'Set-up, configuration, data migration, training and go-live. Base fee ' + money(l.parts.base) + (l.parts.modules.length ? ', plus ' + l.parts.modules.map(function(m){ return m.name + ' ' + money(m.amount); }).join(', ') : '') + '.';
       return l.detail;
+    }
+    // every module and add-on, so the client knows what else costs
+    function priceList(){
+      var mps = q.modulePrices || []; if (!mps.length) return '';
+      var rows = '<tr><td>Core HR<small>Platform fee, always included</small></td><td class="amt">' + (q.corePrice == null ? 'On request' : money(q.corePrice)) + '</td><td>Included</td></tr>';
+      [['module', 'Modules'], ['addon', 'Add-ons']].forEach(function(g){
+        var list = mps.filter(function(x){ return x.group === g[0]; }); if (!list.length) return;
+        rows += '<tr class="sub"><td colspan="3">' + g[1] + '</td></tr>' + list.map(function(x){ return '<tr><td>' + esc(x.name) + '</td><td class="amt">' + (x.price == null ? 'On request' : money(x.price)) + '</td><td>' + (x.included ? '<b>In this proposal</b>' : 'Optional') + '</td></tr>'; }).join('');
+      });
+      return '<h4>Module and add-on prices</h4><p class="hint2">Monthly price of every module for the <b>' + esc(q.band.label) + '</b> employee band' + (q.discountPct > 0 ? ', after the ' + q.discountPct + '% discount in this proposal' : '') + '. Any of them can be added at any time.</p>' +
+        '<table class="doc"><tr><th>Module or add-on</th><th class="amt">Per month</th><th>Status</th></tr>' + rows + '</table>';
     }
     function glance(){
       var r = q.rates; if (!r) return '';
@@ -154,7 +187,7 @@ window.PHDoc = (function () {
       var onceRows = q.lines.filter(function(l){ return l.oneTime; }).map(function(l){ return '<tr><td>' + esc(l.label) + '<small>' + esc(detail(l)) + '</small></td><td class="amt">' + money(l.amount) + '</td></tr>'; }).join('');
       if (q.discountOnce > 0) onceRows += '<tr><td>Discount</td><td class="amt">−' + money(q.discountOnce) + '</td></tr>';
       var impl = q.implementation;
-      return '<p>All prices are in US dollars and are all-inclusive: there are no other taxes or hidden costs.</p>' +
+      return '<p>All prices are in US dollars and are all-inclusive: there are no other taxes or hidden costs.' + (q.band ? ' Pricing is for the <b>' + esc(q.band.label) + '</b> employee band.' : '') + '</p>' +
         '<table class="doc"><tr><th>Recurring</th><th class="amt">Per month</th></tr>' + rows + '</table>' +
         (onceRows ? '<table class="doc"><tr><th>One-time</th><th class="amt">Amount</th></tr>' + onceRows + '<tr class="sub"><td>One-time total</td><td class="amt">' + money(q.oneTime) + '</td></tr></table>' : '') +
         (q.implementationAgreed && q.implementationMode !== 'guideline' ? '<p><b>Implementation</b> will be quoted separately once the requirements and scope are confirmed.' + (q.implementationScope ? ' ' + esc(q.implementationScope) : '') + '</p>' : '') +
@@ -163,6 +196,7 @@ window.PHDoc = (function () {
           '<tr><td>Annual maintenance and support<small>' + q.billing.maintenancePct + '% of the licence fee, payable yearly</small></td><td class="amt">' + money(q.billing.maintenanceAnnual) + '</td></tr>' +
           '<tr><td>Usage (storage and notifications)<small>billed monthly</small></td><td class="amt">' + money(q.billing.usageMonthly) + '</td></tr></table>'
           : '<p><b>Billing:</b> ' + esc(TERM_LABEL[q.billing.term]) + '.' + (q.billing.months > 1 ? ' ' + money(q.billing.prepayLump) + ' is invoiced up front for ' + q.billing.months + ' months.' : ' The subscription is invoiced monthly.') + '</p>') +
+        priceList() +
         glance();
     }
 

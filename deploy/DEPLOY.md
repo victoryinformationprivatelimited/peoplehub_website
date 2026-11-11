@@ -29,6 +29,20 @@ Dokploy already gives you a proxy with HTTPS, so the app needs no Caddy and no f
    Sign in at `https://<your domain>/tool/dashboard.html`, change the password at once, then run `rm .admin-initial-password`.
 6. **Check:** `https://<your domain>/api/health` returns `{"ok":true}`.
 
+### If the repository is not connected to Dokploy (raw compose)
+
+A pasted ("raw") compose has none of the repository's files, so it cannot build the app (the error is `open Dockerfile: no such file or directory`). Use the ready-made image instead:
+
+1. **Push the image** from a PC that has the repository and Docker (the `:latest` image is already built there):
+   ```bash
+   docker login ghcr.io -u <github-username>      # the password is a GitHub token with the write:packages permission
+   docker push ghcr.io/victoryinformationprivatelimited/peoplehub-studio:latest
+   ```
+2. **Give Dokploy the login** to pull it: Settings, Registry, add `ghcr.io` with your GitHub username and a token that has the `read:packages` permission. (Or make the package public in GitHub, but the image contains the application code.)
+3. **Paste `deploy/docker-compose.dokploy-image.yml`** as the raw compose, fill in the Environment tab as above, add the domain on service **api**, port **4400**, and deploy.
+
+Every time the code changes, build and push a new image, then press **Redeploy** in Dokploy.
+
 If the first deploy failed earlier with "not a directory" for the Caddyfile, delete that service (and its volumes, if the database is empty) and create it again as above.
 
 ## On a plain Docker server

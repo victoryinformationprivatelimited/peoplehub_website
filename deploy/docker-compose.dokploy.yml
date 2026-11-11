@@ -1,0 +1,63 @@
+# PeopleHub Proposal Studio on Dokploy: the app and its PostgreSQL database.
+# Dokploy's own proxy (Traefik) provides the domain name and the HTTPS certificate, so there is no Caddy here and nothing is published.
+#
+# In Dokploy: create a Compose service, choose the Git provider (this repository), set the compose path to
+#   ./deploy/docker-compose.dokploy.yml
+# then fill in the Environment tab (see deploy/DEPLOY.md) and add a domain on the "api" service, port 4400.
+name: peoplehub-studio
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - pricing-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    # Built from this repository on the server. The app creates and updates its own database tables when it starts.
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_SSL: "false"
+      PORT: "4400"
+      COOKIE_SECURE: "true"
+      SESSION_SECRET: ${SESSION_SECRET}
+      APP_BASE_URL: ${APP_BASE_URL}
+      PLUNK_SECRET_KEY: ${PLUNK_SECRET_KEY:-}
+      PLUNK_FROM: ${PLUNK_FROM:-}
+      PLUNK_FROM_NAME: ${PLUNK_FROM_NAME:-Victory Information}
+      ESMS_KEY: ${ESMS_KEY:-}
+      ESMS_USERNAME: ${ESMS_USERNAME:-}
+      ESMS_PASSWORD: ${ESMS_PASSWORD:-}
+      ESMS_MASK: ${ESMS_MASK:-}
+      ESMS_PAYMENT: ${ESMS_PAYMENT:-0}
+      WA_TOKEN: ${WA_TOKEN:-}
+      WA_PHONE_ID: ${WA_PHONE_ID:-}
+      WA_TEMPLATE: ${WA_TEMPLATE:-peoplehub_alert}
+      WA_LANG: ${WA_LANG:-en}
+      NTFY_SERVER: ${NTFY_SERVER:-https://ntfy.sh}
+      NTFY_TOKEN: ${NTFY_TOKEN:-}
+    expose:
+      - "4400"
+
+volumes:
+  pricing-data:

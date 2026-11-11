@@ -47,7 +47,9 @@ app.get('/p/:token', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'tool', 'view.html'));
 });
 
-require('./crm').startReminders(); // daily follow-up emails
-
 const PORT = parseInt(process.env.PORT || '4400', 10);
-app.listen(PORT, () => console.log('PeopleHub pricing API and site on port ' + PORT));
+// Create or update the database tables first, so an empty database (a new server) needs no manual setup
+require('./migrate')().then(() => {
+  require('./crm').startReminders(); // daily follow-up emails
+  app.listen(PORT, () => console.log('PeopleHub pricing API and site on port ' + PORT));
+}).catch((e) => { console.error('Database setup failed:', e.message); process.exit(1); });

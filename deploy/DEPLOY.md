@@ -1,5 +1,38 @@
 # Putting the Proposal Studio online
 
+There are two ways. **Using Dokploy? Follow the next section and ignore the rest.** On a plain Docker server, skip to "On a plain Docker server".
+
+## On Dokploy
+
+Dokploy already gives you a proxy with HTTPS, so the app needs no Caddy and no files mounted from the server. Use `deploy/docker-compose.dokploy.yml`.
+
+1. **Create the service.** In your project choose **Create Service → Compose**. Under **Provider** choose **Git**, enter this repository (`https://github.com/victoryinformationprivatelimited/peoplehub_website.git`, branch `main`) and set the **Compose Path** to `./deploy/docker-compose.dokploy.yml`. The compose type is **Docker Compose**. (Do not paste the compose text as a "raw" service: it needs the rest of the repository to build the app.)
+2. **Fill in the Environment tab:**
+
+   | Variable | What to put |
+   | --- | --- |
+   | `DB_NAME`, `DB_USER` | any names, for example `peoplehub_pricing` and `peoplehub` |
+   | `DB_PASSWORD` | a long random password |
+   | `SESSION_SECRET` | a long random string (`openssl rand -hex 32`) |
+   | `APP_BASE_URL` | the full public address, for example `https://proposals.example.com` |
+   | `PLUNK_SECRET_KEY`, `PLUNK_FROM`, `PLUNK_FROM_NAME` | your email settings |
+   | `ESMS_KEY` (or `ESMS_USERNAME`, `ESMS_PASSWORD`), `ESMS_MASK` | SMS, optional |
+   | `WA_TOKEN`, `WA_PHONE_ID`, `WA_TEMPLATE`, `WA_LANG` | WhatsApp, optional |
+
+3. **Add the domain.** In the **Domains** tab add your host name, choose the service **api**, port **4400**, and switch on HTTPS (Let's Encrypt). The domain's DNS A record must already point at the Dokploy server.
+4. **Deploy.** The first deploy builds the app, which takes a few minutes. The app creates its own database tables when it starts, so there is no database step.
+5. **Create the first admin.** Open the **api** container's terminal in Dokploy (or run `docker exec` on the server) and run:
+   ```bash
+   node seed-admin.js admin
+   cat .admin-initial-password
+   ```
+   Sign in at `https://<your domain>/tool/dashboard.html`, change the password at once, then run `rm .admin-initial-password`.
+6. **Check:** `https://<your domain>/api/health` returns `{"ok":true}`.
+
+If the first deploy failed earlier with "not a directory" for the Caddyfile, delete that service (and its volumes, if the database is empty) and create it again as above.
+
+## On a plain Docker server
+
 You need: a Linux server with Docker, a domain name (for example `proposals.example.com`) and about 2 GB of memory.
 
 ## 1. Point the domain at the server

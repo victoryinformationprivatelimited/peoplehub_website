@@ -11,13 +11,13 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER:-peoplehub}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in the Environment tab}
+      POSTGRES_DB: ${DB_NAME:-peoplehub_pricing}
     volumes:
       - pricing-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-peoplehub} -d ${DB_NAME:-peoplehub_pricing}"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -33,14 +33,14 @@ services:
     environment:
       DB_HOST: studio-db
       DB_PORT: "5432"
-      DB_NAME: ${DB_NAME}
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME:-peoplehub_pricing}
+      DB_USER: ${DB_USER:-peoplehub}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in the Environment tab}
       DB_SSL: "false"
       PORT: "4400"
       COOKIE_SECURE: "true"
-      SESSION_SECRET: ${SESSION_SECRET}
-      APP_BASE_URL: ${APP_BASE_URL}
+      SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET in the Environment tab}
+      APP_BASE_URL: ${APP_BASE_URL:?Set APP_BASE_URL in the Environment tab}
       PLUNK_SECRET_KEY: ${PLUNK_SECRET_KEY:-}
       PLUNK_FROM: ${PLUNK_FROM:-}
       PLUNK_FROM_NAME: ${PLUNK_FROM_NAME:-Victory Information}

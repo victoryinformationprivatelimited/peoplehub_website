@@ -4,8 +4,10 @@
 # Dokploy's own proxy (Traefik) provides the domain name and the HTTPS certificate, so nothing is published here.
 name: peoplehub-studio
 
+# The database service has its own name (studio-db), because Dokploy puts every project on one shared network and a plain "db" can
+# resolve to another project's database.
 services:
-  db:
+  studio-db:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
@@ -26,10 +28,10 @@ services:
     image: ${APP_IMAGE:-ghcr.io/victoryinformationprivatelimited/peoplehub-studio:latest}
     restart: unless-stopped
     depends_on:
-      db:
+      studio-db:
         condition: service_healthy
     environment:
-      DB_HOST: db
+      DB_HOST: studio-db
       DB_PORT: "5432"
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}

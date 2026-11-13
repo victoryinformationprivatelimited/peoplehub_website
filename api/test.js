@@ -793,6 +793,49 @@ function session() {
         check('an older proposal gets module prices filled in without changing its saved figures', Array.isArray(saved.totals.modulePrices) && saved.totals.modulePrices.length >= 10);
       }
     }
+    {
+      // the Users page: create admin, staff and partner logins; edit; switch off; reset passwords
+      const A2 = require('./auth');
+      const hashOf = async (name) => (await db.query('SELECT password_hash, must_change_password, role, active, partner_role FROM app_users WHERE username = $1', [name])).rows[0];
+      let partnerId = null;
+      try {
+        const st = await admin('POST', '/api/users', { role: 'staff', username: 'zz.staff.test', displayName: 'Z Staff', email: 'zz.staff@example.test' });
+        const row = await hashOf('zz.staff.test');
+        check('an admin can create a staff login', st.status === 201 && !!st.json.temporaryPassword && row.role === 'staff' && row.must_change_password === true && A2.checkPassword(st.json.temporaryPassword, row.password_hash));
+        check('usernames, roles and weak passwords are checked', (await admin('POST', '/api/users', { role: 'staff', username: 'zz.staff.test' })).status === 400 && (await admin('POST', '/api/users', { role: 'boss', username: 'zz.other' })).status === 400 && (await admin('POST', '/api/users', { role: 'staff', username: 'zz.weak', password: 'short' })).status === 400 && (await admin('POST', '/api/users', { role: 'staff', username: 'Bad Name!' })).status === 400);
+        const ad = await admin('POST', '/api/users', { role: 'admin', username: 'zz.admin.test', password: 'a-long-password-1' });
+        const adRow = await hashOf('zz.admin.test');
+        check('an admin can create another admin with a password they type', ad.status === 201 && ad.json.temporaryPassword === null && adRow.role === 'admin' && A2.checkPassword('a-long-password-1', adRow.password_hash));
+        const cat = (await admin('GET', '/api/categories')).json[0];
+        partnerId = (await admin('POST', '/api/partners', { company_name: 'ZZ Test Co', category_id: cat.id })).json.id;
+        check('a partner login needs a company', (await admin('POST', '/api/users', { role: 'partner', username: 'zz.partner.a' })).status === 400);
+        const p1 = await admin('POST', '/api/users', { role: 'partner', username: 'zz.partner.a', partnerId, partnerRole: 'member' });
+        const p2 = await admin('POST', '/api/users', { role: 'partner', username: 'zz.partner.b', partnerId, partnerRole: 'owner' });
+        const p3 = await admin('POST', '/api/users', { role: 'partner', username: 'zz.partner.c', partnerId });
+        const pa = await hashOf('zz.partner.a'), pc = await hashOf('zz.partner.c');
+        check('the first login of a company becomes its owner, and a company has one owner', p1.status === 201 && pa.partner_role === 'owner' && p2.status === 400 && p3.status === 201 && pc.partner_role === 'member');
+        const list = (await admin('GET', '/api/users')).json;
+        const stId = list.users.find((u) => u.username === 'zz.staff.test').id;
+        check('the user list shows everyone with their company', list.users.length >= 5 && list.users.some((u) => u.username === 'zz.partner.a' && u.company_name === 'ZZ Test Co') && list.partners.some((p) => p.id === partnerId));
+        check('a partner cannot see or manage users', (await T('GET', '/api/users')).status === 403 && (await T('POST', '/api/users', { role: 'admin', username: 'zz.sneaky' })).status === 403);
+        const ed = await admin('PUT', '/api/users/' + stId, { displayName: 'Z Staffer', email: 'zz.staff2@example.test', phone: '0771234567', role: 'admin' });
+        check('an admin can edit a user and change staff to admin', ed.status === 200 && (await hashOf('zz.staff.test')).role === 'admin');
+        check('you cannot change your own role or switch yourself off', (await admin('PUT', '/api/users/' + list.me, { role: 'staff' })).status === 400 && (await admin('PUT', '/api/users/' + list.me + '/active', { active: false })).status === 400);
+        const t1 = await admin('POST', '/api/users/' + stId + '/temporary-password');
+        const afterTemp = await hashOf('zz.staff.test');
+        check('a temporary password replaces the old one and must be changed', t1.status === 200 && A2.checkPassword(t1.json.temporaryPassword, afterTemp.password_hash) && afterTemp.must_change_password === true);
+        check('an admin can type a new password, which must be long enough', (await admin('POST', '/api/users/' + stId + '/set-password', { password: 'short' })).status === 400 && (await admin('POST', '/api/users/' + stId + '/set-password', { password: 'another-long-password-2' })).status === 200 && A2.checkPassword('another-long-password-2', (await hashOf('zz.staff.test')).password_hash));
+        const noMail = await admin('POST', '/api/users', { role: 'staff', username: 'zz.nomail.test' });
+        check('a reset link needs an email address on the login', noMail.status === 201 && (await admin('POST', '/api/users/' + noMail.json.id + '/send-reset-link')).status === 400);
+        const off = await admin('PUT', '/api/users/' + stId + '/active', { active: false });
+        const offRow = await hashOf('zz.staff.test');
+        const on = await admin('PUT', '/api/users/' + stId + '/active', { active: true });
+        check('a login can be switched off and on again', off.status === 200 && offRow.active === false && on.status === 200 && (await hashOf('zz.staff.test')).active === true);
+      } finally {
+        await db.query("DELETE FROM app_users WHERE username LIKE 'zz.%'");
+        if (partnerId) await db.query('DELETE FROM partners WHERE id = $1', [partnerId]);
+      }
+    }
     const pv = await T('GET', '/api/price-list');
     check('a partner sees the implementation guideline at full value', pv.json.data.implementation.base[2] === 800);
 

@@ -159,14 +159,7 @@ r.post('/partners/:id/login', A.requireRole('admin'), async (req, res) => {
   await db.query("INSERT INTO app_users (username, password_hash, role, partner_id) VALUES ($1,$2,'partner',$3)", [username, hash, pr[0].id]);
   res.status(201).json({ ok: true });
 });
-r.put('/users/:id/active', A.requireRole('admin'), async (req, res) => {
-  if (Number(req.params.id) === req.user.id) return bad(res, 'You cannot deactivate your own login');
-  const { rowCount } = await db.query('UPDATE app_users SET active = $1 WHERE id = $2', [req.body.active !== false, req.params.id]);
-  if (!rowCount) return res.status(404).json({ error: 'User not found' });
-  await audit.log(req.user, req.body.active === false ? 'user.deactivate' : 'user.activate', 'user', parseInt(req.params.id, 10), null);
-  res.json({ ok: true });
-});
-
+r.use(require('./users')); // admin: create logins, edit, switch off, reset passwords
 r.use(require('./team'));
 r.use(require('./tracking').staff);
 r.use(require('./crm'));

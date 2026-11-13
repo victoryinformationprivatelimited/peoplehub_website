@@ -15,6 +15,7 @@ RUN cd api && npm ci --omit=dev --no-audit --no-fund
 COPY index.html ./index.html
 COPY assets ./assets
 COPY tool ./tool
+COPY present ./present
 COPY api ./api
 
 RUN chown -R node:node /app

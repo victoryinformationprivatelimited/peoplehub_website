@@ -33,7 +33,9 @@ app.use('/present', require('./presentations').serveDeck());
 const SITE_ROOT = path.join(__dirname, '..');
 const BLOCKED = /^\/(api\/|node_modules\/|present\/|scripts\/|\.git|\.env)|\.(sql|md)$|^\/(serve\.js|\.gitignore)$/i;
 app.use((req, res, next) => (BLOCKED.test(req.path) ? res.status(404).end() : next()));
-app.use(express.static(SITE_ROOT, { index: 'index.html', dotfiles: 'deny' }));
+// Pages, scripts and styles are always re-checked, so a proxy or CDN (such as Cloudflare) never keeps serving an old version after a release
+const NO_STALE = /\.(html|js|css)$/i;
+app.use(express.static(SITE_ROOT, { index: 'index.html', dotfiles: 'deny', setHeaders: (res, file) => { if (NO_STALE.test(file)) res.setHeader('Cache-Control', 'private, max-age=0, must-revalidate'); } }));
 
 app.use((err, req, res, next) => {
   console.error(err);

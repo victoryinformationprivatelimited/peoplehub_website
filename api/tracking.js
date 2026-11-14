@@ -20,6 +20,7 @@ const BOT_RE = /bot|crawl|spider|slurp|preview|scan|fetch|monitor|headless|pytho
 const sms = require('./sms');
 const delivery = require('./delivery');
 const prices = require('./prices');
+const log = require('./logger');
 const whatsapp = require('./whatsapp');
 const push = require('./push');
 const escH = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -226,6 +227,7 @@ pub.post('/public/proposal/:token/accept', async (req, res) => {
   await db.query(`INSERT INTO proposal_events (proposal_id, type, from_status, to_status, note) VALUES ($1,'status',$2,'accepted',$3)`, [row.id, from, 'Accepted online by ' + name + (title ? ', ' + title : '')]);
   await audit.log(null, 'proposal.accepted_online', 'proposal', row.id, row.ref_no + ' by ' + name);
   try { await crm.syncLeadFromProposal(row.customer_id, 'accepted', '', null); await deals.onAccepted(row.id); } catch (e) { console.error('post-acceptance failed:', e.message); }
+  log.info('client.accepted', { ref: row.ref_no, name, title });
   res.json({ ok: true, acceptedAt: ins.rows[0].accepted_at, name, title, ref: hash.slice(0, 12) });
 
   // after answering: tell the owner, and give the client a receipt
@@ -262,6 +264,7 @@ pub.post('/public/track/:token', async (req, res) => {
     `INSERT INTO proposal_views (proposal_id, link_id, sid, type, section, ms, note, device, ua, ip_hash, is_bot, internal) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
     [row.id, row.link_id, sid, type, section, ms, note, deviceOf(ua), ua, ipHash(req.ip), isBot, internal]);
   res.json({ ok: true });
+  if (['engaged', 'pdf', 'cta'].includes(type)) log.info('client.event', { event: type, ref: row.ref_no, device: deviceOf(ua), bot: isBot || undefined, internal: internal || undefined });
 
   // After answering: the first real read moves the proposal to "viewed"; a request to talk alerts the owner
   if (isBot || internal || !['engaged', 'cta'].includes(type)) return;

@@ -17,14 +17,17 @@ r.post('/auth/login', async (req, res) => {
   const username = str(req.body.username, 80).toLowerCase();
   const password = typeof req.body.password === 'string' ? req.body.password : '';
   const key = req.ip + '|' + username;
-  if (A.loginThrottle(key)) return res.status(429).json({ error: 'Too many attempts. Try again in 15 minutes.' });
+  if (A.loginThrottle(key)) { require('./logger').warn('auth.login_blocked', { user: username, ip: req.ip }); return res.status(429).json({ error: 'Too many attempts. Try again in 15 minutes.' }); }
   const { rows } = await db.query('SELECT id, password_hash FROM app_users WHERE lower(username) = $1 AND active', [username]);
   if (!rows[0] || !A.checkPassword(password, rows[0].password_hash)) {
     A.recordFailure(key);
+    require('./logger').warn('auth.login_failed', { user: username, ip: req.ip, reason: rows[0] ? 'wrong password' : 'unknown or inactive user' });
     return res.status(401).json({ error: 'Incorrect username or password' });
   }
   A.clearFailures(key);
   A.setSession(res, rows[0].id);
+  require('./logger').info('auth.login', { user: username, ip: req.ip });
+  require('./audit').log({ id: rows[0].id, username }, 'login', 'user', rows[0].id, 'signed in from ' + req.ip);
   const { rows: me } = await db.query(
     `SELECT u.id, u.username, u.role, u.partner_id, u.partner_role, u.email, u.display_name, u.must_change_password, p.company_name, c.name AS category_name, c.max_discount_pct
        FROM app_users u LEFT JOIN partners p ON p.id = u.partner_id LEFT JOIN partner_categories c ON c.id = p.category_id WHERE u.id = $1`, [rows[0].id]);
@@ -159,6 +162,7 @@ r.post('/partners/:id/login', A.requireRole('admin'), async (req, res) => {
   await db.query("INSERT INTO app_users (username, password_hash, role, partner_id) VALUES ($1,$2,'partner',$3)", [username, hash, pr[0].id]);
   res.status(201).json({ ok: true });
 });
+r.use(require('./emaillog')); // every email sent or attempted, with what the email service answered
 r.use(require('./users')); // admin: create logins, edit, switch off, reset passwords
 r.use(require('./team'));
 r.use(require('./tracking').staff);

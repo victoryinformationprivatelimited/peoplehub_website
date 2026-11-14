@@ -37,6 +37,7 @@
     { href: 'commissions.html', label: 'Commissions', icon: 'coin' },
     { href: 'partners.html', label: 'Partners', icon: 'partners', staffOnly: true },
     { href: 'users.html', label: 'Users', icon: 'user', adminOnly: true },
+    { href: 'email-log.html', label: 'Email log', icon: 'log' },
     { href: 'auditlog.html', label: 'Audit log', icon: 'log', adminOnly: true },
     { href: 'team.html', label: 'My team', icon: 'customers', ownerOnly: true },
     { href: 'profile.html', label: 'My profile', icon: 'user' }

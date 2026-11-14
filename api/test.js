@@ -862,6 +862,26 @@ function session() {
         }
       }
     }
+    {
+      // the activity log and the email log
+      const lg = require('./logger');
+      const tok = 'a'.repeat(64);
+      check('private link tokens never appear in the log', lg.cleanPath('/api/public/proposal/' + tok + '/accept?x=1') === '/api/public/proposal/<token>/accept' && lg.cleanPath('/p/' + tok) === '/p/<token>');
+      const prop = (await admin('GET', '/api/proposals')).json.find((p) => !p.incomplete);
+      if (prop) {
+        const ins1 = await db.query("INSERT INTO email_log (proposal_id, sent_by, to_email, subject, ok, error, role, resend, detail, duration_ms, attachments) VALUES ($1,1,'zz.fail@example.test','ZZ log test',false,'The email service refused the message (401)','to',false,'unauthorized',120,1) RETURNING id", [prop.id]);
+        try {
+          const failed = (await admin('GET', '/api/email-log?status=failed&q=zz.fail')).json;
+          const row = failed.find((x) => x.id === ins1.rows[0].id);
+          check('the email log shows a failed email with the reason the service gave', row && row.ok === false && /401/.test(row.error) && row.detail === 'unauthorized' && row.ref_no === prop.ref_no && row.attachments === 1);
+          check('the sent filter leaves failed emails out', !(await admin('GET', '/api/email-log?status=sent&q=zz.fail')).json.some((x) => x.id === ins1.rows[0].id));
+          const asPartner = await T('GET', '/api/email-log?q=zz.fail');
+          check('a partner sees only their own company\'s emails', asPartner.status === 200 && !asPartner.json.some((x) => x.id === ins1.rows[0].id));
+        } finally { await db.query('DELETE FROM email_log WHERE id = $1', [ins1.rows[0].id]); }
+      }
+      const audits = (await admin('GET', '/api/audit?q=request%20put')).json;
+      check('changes made by signed-in people are written to the audit log', Array.isArray(audits) && audits.some((a) => /^request (PUT|POST|DELETE) \/api\//.test(a.action)));
+    }
     const pv = await T('GET', '/api/price-list');
     check('a partner sees the implementation guideline at full value', pv.json.data.implementation.base[2] === 800);
 

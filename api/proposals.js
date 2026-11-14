@@ -6,6 +6,7 @@ const mail = require('./email');
 const kit = require('./emailkit');
 const delivery = require('./delivery');
 const prices = require('./prices');
+const log = require('./logger');
 const pdf = require('./pdf');
 const tracking = require('./tracking');
 const crm = require('./crm');
@@ -271,13 +272,16 @@ r.post('/proposals/:id/send', ANY, async (req, res) => {
   const o = req.body.options || {};
   const opts = { includeSummary: o.includeSummary !== false, includeLink: o.includeLink !== false, pdfAttached: o.attachPdf === true };
   let attachments = [];
+  log.info('email.request', { ref: p.ref_no, by: req.user.username, to: recipients.map((x) => x.a).join(','), pdf: opts.pdfAttached, link: opts.includeLink, summary: opts.includeSummary, status: p.status });
   if (opts.pdfAttached) {
+    const tp = Date.now();
     try {
       const pdfBuf = await pdf.render(req.user.id, p.id);
       attachments = [{ filename: p.ref_no + '.pdf', content: pdfBuf, contentType: 'application/pdf' }];
+      log.info('email.pdf_ready', { ref: p.ref_no, ms: Date.now() - tp, bytes: pdfBuf.length });
     } catch (e) {
-      console.error('PDF render failed:', e.message);
-      return res.status(502).json({ error: 'Could not create the proposal PDF, so the email was not sent' });
+      log.error('email.pdf_failed', { ref: p.ref_no, ms: Date.now() - tp, error: e.message });
+      return res.status(424).json({ error: 'Could not create the proposal PDF, so the email was not sent. Untick the PDF attachment to send without it.' });
     }
   }
   const ids = (Array.isArray(req.body.attachmentIds) ? req.body.attachmentIds : []).map((x) => parseInt(x, 10)).filter(Number.isInteger).slice(0, 5);
@@ -293,12 +297,13 @@ r.post('/proposals/:id/send', ANY, async (req, res) => {
     const link = opts.includeLink ? (await tracking.ensureLink(p.id, req.user.id, rc.a)).url : null;
     const html = kit.build(p, message, senderName, link, opts);
     const result = await mail.send({ to: rc.a, subject, html, replyTo, attachments });
-    await db.query('INSERT INTO email_log (proposal_id, sent_by, to_email, subject, ok, error, role, resend) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
-      [p.id, req.user.id, rc.a, subject, result.ok, result.ok ? null : result.error, rc.role, resend]);
+    await db.query('INSERT INTO email_log (proposal_id, sent_by, to_email, subject, ok, error, role, resend, detail, duration_ms, attachments) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',
+      [p.id, req.user.id, rc.a, subject, result.ok, result.ok ? null : result.error, rc.role, resend, result.ok ? ('answered ' + result.status) : (result.detail ? String(result.detail).slice(0, 500) : null), result.ms || null, attachments.length]);
     results.push({ to: rc.a, role: rc.role, ok: result.ok, error: result.ok ? null : result.error });
   }
   const okList = results.filter((x) => x.ok);
-  if (!okList.length) return res.status(502).json({ error: results[0].error, results });
+  log.info('email.done', { ref: p.ref_no, by: req.user.username, sent: okList.length, failed: results.length - okList.length });
+  if (!okList.length) return res.status(424).json({ error: results[0].error + (results[0].detail ? ' - ' + results[0].detail : ''), results });
   await logEvent(db, p.id, 'emailed', req.user.id, { note: (resend ? 'Resent to ' : '') + okList.map((x) => x.to).join(', ') });
   if (p.status === 'draft') { await db.query(`UPDATE proposals SET status = 'sent', status_changed_at = now(), updated_at = now() WHERE id = $1`, [p.id]); await logEvent(db, p.id, 'status', req.user.id, { from: 'draft', to: 'sent' }); }
   await crm.syncLeadFromProposal(p.customer_id, 'sent', '', req.user.id);
@@ -357,8 +362,8 @@ r.get('/proposals/:id/pdf', ANY, async (req, res) => {
     res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${rows[0].ref_no}.pdf"`, 'Cache-Control': 'no-store' });
     res.send(buf);
   } catch (e) {
-    console.error('PDF render failed:', e.message);
-    res.status(502).json({ error: 'Could not create the PDF' });
+    log.error('pdf.export_failed', { ref: rows[0].ref_no, error: e.message });
+    res.status(424).json({ error: 'Could not create the PDF' });
   }
 });
 

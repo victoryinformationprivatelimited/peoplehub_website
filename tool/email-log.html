@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Email log</title>
+<style>
+  .wrap { max-width: 1200px; }
+  .chips2 { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+  .chip { border:1.5px solid var(--border); background:var(--surface); border-radius:99px; padding:6px 14px; font-weight:650; font-size:13px; cursor:pointer; }
+  .chip b { margin-left:6px; background:var(--s3); border-radius:99px; padding:0 8px; font-size:12px; color:var(--text); }
+  .chip.on { background:var(--ink); border-color:var(--ink); color:#fff; } .chip.on b { background:rgba(255,255,255,.18); color:#fff; }
+  td small { display:block; color:var(--muted); font-size:11.5px; max-width:46ch; overflow-wrap:anywhere; }
+  .bad { color:var(--bad-fg); font-weight:650; } .good { color:var(--ok-fg); font-weight:650; }
+  tr.fail td { background:var(--bad-bg); }
+  .table-wrap { overflow-x:auto; }
+</style>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem("ph-theme")||"dark"}catch(e){}</script>
+<link rel="stylesheet" href="ui.css">
+</head>
+<body>
+<div id="gate"><div class="box">
+  <h2>Email log</h2><div class="hint">Sign in to see the emails.</div>
+  <input type="text" id="gUser" placeholder="Username" autocomplete="username">
+  <input type="password" id="gPass" placeholder="Password" autocomplete="current-password">
+  <div class="err" id="gErr"></div><button class="primary" id="gGo">Log in</button>
+</div></div>
+
+<div class="wrap">
+  <div class="top"><h1>Email log</h1><div class="sp"></div><span class="hint" id="stamp" style="margin:0"></span></div>
+  <div class="sub">Every email the system sent or tried to send, who it was for, and what the email service answered. A failed email shows the reason. The list refreshes by itself.</div>
+
+  <div class="card">
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:space-between;margin-bottom:10px">
+      <div class="chips2" id="chips" style="margin:0"></div>
+      <input type="search" id="q" placeholder="Search recipient, subject, reference or customer" style="max-width:340px">
+    </div>
+    <div class="table-wrap"><table id="tbl"></table></div>
+    <div class="hint" id="empty" hidden style="margin-top:12px">No emails match.</div>
+  </div>
+</div>
+
+<script src="shell.js"></script>
+<script src="app.js"></script>
+<script>
+(function(){
+  var $ = PH.$, esc = PH.esc, rows = [], filter = 'all', staff = false;
+  function when(t){ return new Date(t).toLocaleString(); }
+  function status(e){
+    if (!e.ok) return '<span class="bad">Failed</span><small>' + esc(e.error || '') + (e.detail ? ' · ' + esc(e.detail) : '') + '</small>';
+    var d = e.delivery;
+    if (d === 'bounced') return '<span class="bad">Bounced</span>';
+    if (d === 'complaint') return '<span class="bad">Marked as spam</span>';
+    if (e.mail_opened_at) return '<span class="good">Opened</span><small>' + esc(when(e.mail_opened_at)) + '</small>';
+    if (d === 'delivered') return '<span class="good">Delivered</span><small>' + esc(when(e.delivered_at)) + '</small>';
+    if (d === 'sent') return 'Sent, waiting for delivery';
+    return 'Accepted by the mail service';
+  }
+  function draw(){
+    var q = $('q').value.trim().toLowerCase();
+    var n = { all: rows.length, failed: rows.filter(function(e){ return !e.ok; }).length };
+    n.sent = n.all - n.failed;
+    $('chips').innerHTML = [['all', 'All'], ['failed', 'Failed'], ['sent', 'Sent']].map(function(f){ return '<button class="chip' + (filter === f[0] ? ' on' : '') + '" data-f="' + f[0] + '">' + f[1] + '<b>' + n[f[0]] + '</b></button>'; }).join('');
+    var list = rows.filter(function(e){
+      if (filter === 'failed' && e.ok) return false; if (filter === 'sent' && !e.ok) return false;
+      return !q || [e.to_email, e.subject, e.ref_no, e.customer].join(' ').toLowerCase().indexOf(q) > -1;
+    });
+    $('empty').hidden = list.length > 0;
+    $('tbl').innerHTML = list.length ? '<thead><tr><th>When</th><th>Proposal</th><th>To</th><th>Subject</th><th>Result</th><th>By</th></tr></thead><tbody>' + list.map(function(e){
+      return '<tr class="' + (e.ok ? '' : 'fail') + '"><td>' + esc(when(e.created_at)) + '</td><td><a href="proposal.html?open=' + e.proposal_id + '">' + esc(e.ref_no) + '</a><small>' + esc(e.customer || '') + '</small></td>' +
+        '<td>' + esc(e.to_email) + (e.role === 'cc' ? ' <small>extra recipient</small>' : '') + (e.resend ? '<small>resend</small>' : '') + '</td><td>' + esc(e.subject) + (e.attachments ? '<small>' + e.attachments + ' file' + (e.attachments === 1 ? '' : 's') + ' attached</small>' : '') + '</td>' +
+        '<td>' + status(e) + (e.duration_ms ? '<small>' + e.duration_ms + ' ms</small>' : '') + '</td><td>' + esc(e.sent_by || '') + '</td></tr>';
+    }).join('') + '</tbody>' : '';
+  }
+  function load(){
+    PH.api('GET', '/api/email-log').then(function(r){ if (r.status !== 200) return; rows = r.json; draw(); $('stamp').textContent = 'Updated ' + new Date().toLocaleTimeString(); });
+  }
+  $('chips').addEventListener('click', function(e){ var b = e.target.closest('[data-f]'); if (b) { filter = b.dataset.f; draw(); } });
+  $('q').addEventListener('input', draw);
+  PH.boot(function(user){ staff = user.role !== 'partner'; load(); setInterval(function(){ if (!document.hidden) load(); }, 15000); });
+})();
+</script>
+</body>
+</html>

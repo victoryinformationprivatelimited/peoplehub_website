@@ -822,7 +822,7 @@
     api('POST', '/api/proposals/' + proposal.id + '/send', { to: $('mTo').value, cc: $('mCc').value, subject: $('mSubject').value, message: $('mBody').value, options: mailOptions(), attachmentIds: attached.map(function(f){ return f.id; }) }).then(function(r){
       $('mSend').disabled = false;
       if (r.status === 200) { proposal.status = r.json.status; var bad = (r.json.results || []).filter(function(x){ return !x.ok; }); say($('mMsg'), bad.length ? 'Sent, but failed for: ' + bad.map(function(x){ return x.to; }).join(', ') : 'Email sent', !bad.length); $('sentBtn').hidden = true; $('saveBtn').disabled = proposal.status !== 'draft'; $('refLabel').textContent = proposal.ref_no + ' · ' + proposal.status; loadEmailHistory(); renderPipeline(); }
-      else say($('mMsg'), r.json.error || 'Could not send', false);
+      else say($('mMsg'), r.json.error || ('Could not send. The server answered ' + r.status + (r.status === 502 || r.status === 504 ? ' (the app did not respond: it may have crashed or run out of memory)' : '') + '.'), false);
     }).catch(function(){ $('mSend').disabled = false; say($('mMsg'), 'Cannot reach the server', false); });
   });
 

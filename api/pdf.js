@@ -15,7 +15,17 @@ async function render(userId, proposalId) {
   return job;
 }
 
+const log = require('./logger');
 async function renderNow(userId, proposalId) {
+  const t0 = Date.now();
+  try {
+    const out = await renderInner(userId, proposalId);
+    log.info('pdf.rendered', { proposal: proposalId, ms: Date.now() - t0, bytes: out.length });
+    return out;
+  } catch (e) { log.error('pdf.failed', { proposal: proposalId, ms: Date.now() - t0, error: e.message }); throw e; }
+}
+
+async function renderInner(userId, proposalId) {
   const browser = await puppeteer.launch({
     executablePath: CHROME,
     headless: true,

@@ -489,3 +489,8 @@ ALTER TABLE app_users ADD COLUMN IF NOT EXISTS ntfy_topic VARCHAR(40);
 
 -- ---- The customer's logo on the proposal cover (a small image, stored as a data URL) ----
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS logo TEXT;
+
+-- ---- Email log: what the email service answered, how long it took, how many files were attached ----
+ALTER TABLE email_log ADD COLUMN IF NOT EXISTS detail TEXT;
+ALTER TABLE email_log ADD COLUMN IF NOT EXISTS duration_ms INT;
+ALTER TABLE email_log ADD COLUMN IF NOT EXISTS attachments INT;

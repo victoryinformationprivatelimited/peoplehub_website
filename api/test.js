@@ -836,6 +836,32 @@ function session() {
         if (partnerId) await db.query('DELETE FROM partners WHERE id = $1', [partnerId]);
       }
     }
+    {
+      // a sent proposal appears on the lead board
+      let custId = null;
+      try {
+        const cu = await admin('POST', '/api/customers', { name: 'ZZ Board Test Ltd', industry: 'Testing' });
+        custId = cu.json.id;
+        await admin('POST', '/api/customers/' + custId + '/contacts', { name: 'Zed Tester', title: 'HR', email: 'zed@zzboardtest.example', phone: '0771110000' });
+        const pr = await admin('POST', '/api/proposals', { customer_id: custId, input: { ...qIn } });
+        const before = (await db.query('SELECT count(*)::int AS n FROM leads WHERE customer_id = $1', [custId])).rows[0].n;
+        await admin('PUT', '/api/proposals/' + pr.json.id + '/status', { status: 'sent' });
+        const lead = (await db.query('SELECT stage, source, employees, est_value, partner_id FROM leads WHERE customer_id = $1', [custId])).rows;
+        check('a sent proposal is added to the lead board in the Proposal stage', before === 0 && lead.length === 1 && lead[0].stage === 'proposal' && lead[0].source === 'proposal' && lead[0].employees === qIn.employees && Number(lead[0].est_value) > 0);
+        await admin('PUT', '/api/proposals/' + pr.json.id + '/status', { status: 'negotiating' });
+        check('sending or updating again does not add a second lead', (await db.query('SELECT count(*)::int AS n FROM leads WHERE customer_id = $1', [custId])).rows[0].n === 1);
+        await db.query('DELETE FROM leads WHERE customer_id = $1', [custId]);
+        const back = await require('./crm').ensureLeadForProposal(custId); // the start-up backfill runs exactly this for each customer
+        check('a customer with a sent proposal but no lead gets one', back > 0 && (await db.query('SELECT count(*)::int AS n FROM leads WHERE customer_id = $1', [custId])).rows[0].n === 1);
+      } finally {
+        if (custId) {
+          await db.query('DELETE FROM crm_activities WHERE lead_id IN (SELECT id FROM leads WHERE customer_id = $1) OR customer_id = $1', [custId]);
+          await db.query('DELETE FROM leads WHERE customer_id = $1', [custId]);
+          await db.query('DELETE FROM proposals WHERE customer_id = $1', [custId]);
+          await db.query('DELETE FROM customers WHERE id = $1', [custId]);
+        }
+      }
+    }
     const pv = await T('GET', '/api/price-list');
     check('a partner sees the implementation guideline at full value', pv.json.data.implementation.base[2] === 800);
 
@@ -902,6 +928,11 @@ function session() {
     await db.query("DELETE FROM proposals WHERE customer_id IN (SELECT id FROM customers WHERE name LIKE 'Zephyr%')");
     if (extraProposals.length) await db.query('DELETE FROM proposals WHERE id = ANY($1::int[])', [extraProposals]);
     await db.query('DELETE FROM proposal_counters WHERE NOT EXISTS (SELECT 1 FROM proposals)');
+    // sending a proposal now puts its customer on the lead board, so those leads go first
+    await db.query("DELETE FROM crm_activities WHERE customer_id = ANY($1::int[]) OR lead_id IN (SELECT id FROM leads WHERE customer_id = ANY($1::int[]))", [extraCustomers]).catch(() => {});
+    await db.query('DELETE FROM leads WHERE customer_id = ANY($1::int[])', [extraCustomers]).catch(() => {});
+    await db.query("DELETE FROM crm_activities WHERE customer_id IN (SELECT id FROM customers WHERE name LIKE 'Zephyr%') OR lead_id IN (SELECT id FROM leads WHERE customer_id IN (SELECT id FROM customers WHERE name LIKE 'Zephyr%'))").catch(() => {});
+    await db.query("DELETE FROM leads WHERE customer_id IN (SELECT id FROM customers WHERE name LIKE 'Zephyr%')").catch(() => {});
     for (const id of extraCustomers) await db.query('DELETE FROM customers WHERE id = $1', [id]);
     await db.query("DELETE FROM customers WHERE name LIKE 'Zephyr%'");
     await db.query("DELETE FROM app_users WHERE username LIKE 'test.staff.%'");

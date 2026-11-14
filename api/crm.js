@@ -241,11 +241,50 @@ r.post('/leads/:id/convert', ANY, async (req, res) => {
   } catch (e) { await client.query('ROLLBACK'); throw e; } finally { client.release(); }
 });
 
+// A proposal that has been sent belongs on the lead board. When its customer has no lead yet, one is created in the Proposal stage.
+async function ensureLeadForProposal(customerId) {
+  const { rows: ex } = await db.query('SELECT 1 FROM leads WHERE customer_id = $1 LIMIT 1', [customerId]);
+  if (ex.length) return null; // already on the board (or was, and was closed)
+  const { rows: pr } = await db.query(
+    `SELECT p.id, p.ref_no, p.partner_id, p.created_by, p.client, p.selections, p.totals FROM proposals p
+      WHERE p.customer_id = $1 AND p.status IN ('sent', 'viewed', 'negotiating') ORDER BY p.created_at DESC LIMIT 1`, [customerId]);
+  const p = pr[0]; if (!p) return null;
+  const { rows: cu } = await db.query('SELECT name, industry FROM customers WHERE id = $1', [customerId]);
+  const c = cu[0]; if (!c) return null;
+  const contact = (p.client && p.client.contact) || {};
+  const email = contact.email ? String(contact.email).trim().toLowerCase().slice(0, 160) : null;
+  const keys = { name_key: nameKey(c.name), email, email_domain: domainOf(email), phone_key: phoneKeyOf(contact.phone) };
+  if (!keys.name_key) return null;
+  // if another company already holds this one, it stays with them
+  const hit = await findConflicts({ role: p.partner_id ? 'partner' : 'staff', partner_id: p.partner_id || null }, keys, null);
+  if (hit.others.length) return null;
+  const emp = parseInt(p.selections && p.selections.employees, 10);
+  const value = Number(p.totals && p.totals.monthlyRecurring);
+  const ins = await db.query(
+    `INSERT INTO leads (partner_id, owner_id, created_by, company_name, name_key, contact_name, contact_title, email, email_domain, phone, phone_key, industry, source, employees, est_value, stage, customer_id, lock_until)
+     VALUES ($1,$2,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'proposal',$12,$13,'proposal',$14, now() + ($15 || ' days')::interval) RETURNING id`,
+    [p.partner_id || null, p.created_by, c.name.slice(0, 160), keys.name_key, contact.name ? String(contact.name).slice(0, 120) : null, contact.title ? String(contact.title).slice(0, 120) : null, email, keys.email_domain, contact.phone ? String(contact.phone).slice(0, 40) : null, keys.phone_key, c.industry ? String(c.industry).slice(0, 120) : null, Number.isInteger(emp) && emp > 0 ? emp : null, value > 0 ? value : null, customerId, String(LOCK_DAYS)]);
+  await logActivity(db, { lead_id: ins.rows[0].id, type: 'stage', note: 'Added to the board when proposal ' + p.ref_no + ' was sent', user_id: p.created_by });
+  return ins.rows[0].id;
+}
+
+// At start-up: proposals that were sent before this existed get their lead too
+async function backfillLeadsFromProposals() {
+  const { rows } = await db.query(
+    `SELECT DISTINCT p.customer_id FROM proposals p WHERE p.status IN ('sent', 'viewed', 'negotiating') AND p.customer_id IS NOT NULL
+       AND NOT EXISTS (SELECT 1 FROM leads l WHERE l.customer_id = p.customer_id)`);
+  let n = 0;
+  for (const x of rows) { try { if (await ensureLeadForProposal(x.customer_id)) n++; } catch (e) { console.error('lead from proposal failed:', e.message); } }
+  if (n) console.log('Added ' + n + ' lead' + (n === 1 ? '' : 's') + ' to the board for proposals that were already sent');
+  return n;
+}
+
 // Called when a proposal moves: keeps the lead's stage in step with the deal
 async function syncLeadFromProposal(customerId, status, reason, userId) {
   if (!customerId) return;
   const { rows } = await db.query(`SELECT * FROM leads WHERE customer_id = $1 AND stage NOT IN ('won', 'lost') ORDER BY id DESC LIMIT 1`, [customerId]);
-  const l = rows[0]; if (!l) return;
+  const l = rows[0];
+  if (!l) { if (['sent', 'viewed', 'negotiating'].includes(status)) await ensureLeadForProposal(customerId); return; }
   if (status === 'sent' && ['new', 'contacted', 'qualified'].includes(l.stage)) await setStage(l, 'proposal', '', userId);
   else if (status === 'accepted') await setStage(l, 'won', '', userId);
   else if (status === 'lost') await setStage(l, 'lost', 'Proposal lost' + (reason ? ': ' + reason : ''), userId);
@@ -425,6 +464,8 @@ function startReminders() {
 
 module.exports = r;
 module.exports.syncLeadFromProposal = syncLeadFromProposal;
+module.exports.backfillLeadsFromProposals = backfillLeadsFromProposals;
+module.exports.ensureLeadForProposal = ensureLeadForProposal;
 module.exports.dueByUser = dueByUser;
 module.exports.sendExpiryNotices = sendExpiryNotices;
 module.exports.startReminders = startReminders;
